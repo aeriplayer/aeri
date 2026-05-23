@@ -1,0 +1,96 @@
+[workspace]
+members = [
+    "crates/aeri-core",
+    "crates/aeri-audio",
+    "crates/aeri-decode",
+    "crates/aeri-dsp",
+    "crates/aeri-library",
+    "crates/aeri-engine",
+    "crates/aeri-ipc",
+    "crates/aeri-platform",
+    "crates/aeri-stream",
+    "crates/aeri-cli",
+    "crates/aeri-gui",
+    "xtask",
+]
+resolver = "2"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/aeriplayer/aeri"
+authors = []
+
+[workspace.dependencies]
+# Internal
+aeri-core     = { path = "crates/aeri-core" }
+aeri-audio    = { path = "crates/aeri-audio" }
+aeri-decode   = { path = "crates/aeri-decode" }
+aeri-dsp      = { path = "crates/aeri-dsp" }
+aeri-library  = { path = "crates/aeri-library" }
+aeri-engine   = { path = "crates/aeri-engine" }
+aeri-ipc      = { path = "crates/aeri-ipc" }
+aeri-platform = { path = "crates/aeri-platform" }
+aeri-stream   = { path = "crates/aeri-stream" }
+
+# Async runtime
+tokio = { version = "1.52.3", features = ["full"] }
+
+# Audio output & lock-free ring buffer
+cpal = "0.17.3"
+rtrb = "0.3"
+
+# Platform-specific audio backends
+coreaudio-rs = "0.14.2" # macOS — hog mode, bit-perfect
+pipewire     = "0.10" # Linux — PipeWire only
+
+# Decode
+symphonia = { version = "0.6", default-features = false, features = [
+    "mp3", "flac", "vorbis", "ogg", "wav", "aiff", "pcm",
+] }
+symphonia-adapter-libopus = "0.3" # Opus via libopus C lib; linked by aeri-decode
+
+# DSP / resampling
+rubato = "3"
+
+# Tag read/write
+lofty = "0.24"
+
+# Library: async pool, database, parallel scan, filesystem watch
+# rusqlite pinned to 0.38 to unify with deadpool-sqlite 0.13's transitive requirement.
+rusqlite        = { version = "0.39", features = ["bundled"] }
+deadpool-sqlite = { version = "0.13", features = ["bundled"] }
+jwalk           = "0.8.1"
+rayon           = "1.12"
+notify          = "8.2"
+
+# Platform integration
+zbus  = { version = "5.15", default-features = false, features = ["tokio"] } # Linux MPRIS
+objc2 = "0.6.4"                                                               # macOS
+
+# GUI
+iced = { version = "0.14", features = ["tokio"] }
+
+# IPC — Connect-RPC + Protobuf
+connectrpc        = { version = "0.6", features = ["client", "server"] }
+connectrpc-build  = "0.6"  # build-dep: generates Tower service stubs from .proto
+buffa             = "0.6"
+buffa-build       = "0.6"  # build-dep: compiles .proto to Rust types
+
+# Error handling
+thiserror = "2.0.18"
+anyhow    = "1.0.102"
+
+# Observability
+tracing            = "0.1.44"
+tracing-subscriber = { version = "0.3.23", features = ["env-filter"] }
+
+# Workspace-wide lint configuration.
+# pedantic/nursery are at priority -1 so individual #[allow] overrides still work.
+[workspace.lints.rust]
+unsafe_code = "deny"
+
+[workspace.lints.clippy]
+pedantic = { level = "warn", priority = -1 }
+nursery  = { level = "warn", priority = -1 }

@@ -1,0 +1,20 @@
+[package]
+name = "aeri-engine"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Composes audio, decode, DSP, library, and platform into the player engine"
+
+[lints]
+workspace = true
+
+[dependencies]
+aeri-core.workspace = true
+aeri-audio.workspace = true
+aeri-decode.workspace = true
+aeri-dsp.workspace = true
+aeri-library.workspace = true
+aeri-platform.workspace = true
+tokio.workspace = true
+thiserror.workspace = true
+tracing.workspace = true

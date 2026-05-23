@@ -1,0 +1,8 @@
+syntax = "proto3";
+
+package aeri.v1;
+
+// PlayerService — IPC interface for controlling playback and browsing the
+// library. Full RPC method definitions are added in the aeri-ipc implementation
+// phase. See docs/architecture.md for the IPC design contract.
+service PlayerService {}

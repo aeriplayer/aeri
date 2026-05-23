@@ -1,0 +1,12 @@
+[package]
+name = "aeri-core"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Domain types: Track, Album, Artist, Queue, PlaybackState"
+
+[lints]
+workspace = true
+
+[dependencies]
+thiserror.workspace = true
