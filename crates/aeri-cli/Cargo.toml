@@ -1,0 +1,20 @@
+[package]
+name = "aeri-cli"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "aeri CLI binary; also runs as the player daemon"
+
+[[bin]]
+name = "aeri"
+path = "src/main.rs"
+
+[lints]
+workspace = true
+
+[dependencies]
+aeri-ipc.workspace = true
+tokio.workspace = true
+anyhow.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true

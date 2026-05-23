@@ -1,0 +1,137 @@
+# Generated skeleton for cargo-dist v0.32.0.
+# Run `cargo dist generate` after installing cargo-dist to get the canonical output.
+#
+# Required secrets:
+#   APPLE_CERTIFICATE              — base64-encoded Developer ID Application .p12
+#   APPLE_CERTIFICATE_PASSWORD     — passphrase for the .p12
+#   APPLE_SIGNING_IDENTITY         — "Developer ID Application: Name (TEAMID)"
+#   APPLE_NOTARIZATION_USERNAME    — Apple ID email
+#   APPLE_NOTARIZATION_PASSWORD    — app-specific password for notarytool
+#   APPLE_TEAM_ID                  — 10-character team identifier
+#   HOMEBREW_TAP_TOKEN             — GitHub PAT with repo scope on the tap repo
+
+name: Release
+
+permissions:
+  contents: write
+  id-token: write  # Sigstore / OIDC provenance attestations
+
+on:
+  push:
+    tags:
+      - "v[0-9]+.[0-9]+.[0-9]+*"
+
+jobs:
+  plan:
+    name: Plan release
+    runs-on: ubuntu-latest
+    outputs:
+      val: ${{ steps.plan.outputs.manifest }}
+      tag: ${{ github.ref_name }}
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Install cargo-dist
+        run: |
+          curl --proto '=https' --tlsv1.2 -LsSf \
+            https://github.com/axodotdev/cargo-dist/releases/download/v0.32.0/cargo-dist-installer.sh \
+            | sh
+      - id: plan
+        run: |
+          cargo dist plan --tag=${{ github.ref_name }} --output-format=json \
+            | tee dist-manifest.json
+          echo "manifest=$(jq -c . dist-manifest.json)" >> "$GITHUB_OUTPUT"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist-manifest.json
+          path: dist-manifest.json
+
+  build:
+    name: Build · ${{ matrix.target }}
+    needs: plan
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: aarch64-apple-darwin
+            runner: macos-14
+          - target: x86_64-unknown-linux-gnu
+            runner: ubuntu-24.04
+          - target: aarch64-unknown-linux-gnu
+            runner: ubuntu-24.04-arm
+
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install system dependencies (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y --no-install-recommends \
+            libpipewire-0.3-dev \
+            pkg-config
+
+      - name: Install cargo-dist
+        run: |
+          curl --proto '=https' --tlsv1.2 -LsSf \
+            https://github.com/axodotdev/cargo-dist/releases/download/v0.32.0/cargo-dist-installer.sh \
+            | sh
+
+      - name: Set up Rust toolchain
+        run: rustup show
+
+      - name: Build release artifacts
+        run: |
+          cargo dist build \
+            --tag=${{ needs.plan.outputs.tag }} \
+            --target=${{ matrix.target }} \
+            --output-format=json
+        env:
+          # macOS signing + notarization (only consumed by the macos-14 runner)
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_NOTARIZATION_USERNAME: ${{ secrets.APPLE_NOTARIZATION_USERNAME }}
+          APPLE_NOTARIZATION_PASSWORD: ${{ secrets.APPLE_NOTARIZATION_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: artifacts-${{ matrix.target }}
+          path: dist/
+
+  publish:
+    name: Publish release
+    needs: [plan, build]
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: artifacts-*
+          merge-multiple: true
+          path: dist/
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist-manifest.json
+      - name: Install cargo-dist
+        run: |
+          curl --proto '=https' --tlsv1.2 -LsSf \
+            https://github.com/axodotdev/cargo-dist/releases/download/v0.32.0/cargo-dist-installer.sh \
+            | sh
+      - name: Create GitHub release and upload artifacts
+        run: |
+          cargo dist host \
+            --steps=upload \
+            --steps=release \
+            --tag=${{ needs.plan.outputs.tag }}

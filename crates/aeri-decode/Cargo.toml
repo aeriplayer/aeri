@@ -1,0 +1,16 @@
+[package]
+name = "aeri-decode"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Symphonia adapter and format trait"
+
+[lints]
+workspace = true
+
+[dependencies]
+aeri-core.workspace = true
+symphonia.workspace = true
+symphonia-adapter-libopus.workspace = true
+thiserror.workspace = true
+tracing.workspace = true

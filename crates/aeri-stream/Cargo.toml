@@ -1,0 +1,15 @@
+[package]
+name = "aeri-stream"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "HTTP audio streaming and Subsonic-compatible API (planned, post-v1)"
+
+[lints]
+workspace = true
+
+[dependencies]
+aeri-core.workspace = true
+tokio.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
