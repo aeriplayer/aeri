@@ -29,7 +29,7 @@ in [`ARCHITECTURE.md`](ARCHITECTURE.md).
   - Jobs: `cargo check`, `cargo test`, `cargo clippy -- -D warnings`, `cargo fmt --check`
 - [x] `cargo-dist` skeleton — installers, artifact upload, release draft
 - [x] `git init`, initial commit
-- [ ] Push to remote (pending GitHub repo creation)
+- [x] Push to remote
 
 ---
 
