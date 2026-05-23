@@ -20,15 +20,16 @@ in [`ARCHITECTURE.md`](ARCHITECTURE.md).
 
 ---
 
-## Phase 1 — Infrastructure
+## Phase 1 — Infrastructure ✓
 
 > CI green on all targets; release pipeline wired.
 
-- [ ] GitHub Actions matrix: `aarch64-apple-darwin`, `x86_64-unknown-linux-gnu`,
+- [x] GitHub Actions matrix: `aarch64-apple-darwin`, `x86_64-unknown-linux-gnu`,
       `aarch64-unknown-linux-gnu`
   - Jobs: `cargo check`, `cargo test`, `cargo clippy -- -D warnings`, `cargo fmt --check`
-- [ ] `cargo-dist` skeleton — installers, artifact upload, release draft
-- [ ] `git init`, initial commit, push to remote
+- [x] `cargo-dist` skeleton — installers, artifact upload, release draft
+- [x] `git init`, initial commit
+- [ ] Push to remote (pending GitHub repo creation)
 
 ---
 

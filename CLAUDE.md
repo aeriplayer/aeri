@@ -8,7 +8,9 @@ current status**. System design and structural decisions live in
 
 ## Current status
 
-Phase 0 (scaffolding) complete. Next: Phase 1 (CI + cargo-dist).
+Phase 1 (CI + cargo-dist) complete. Next: Phase 2 (core domain types).
+
+Resolve metadata schema and daemon concurrency model before writing any Phase 2 code.
 
 See [`docs/ROADMAP.md`](docs/ROADMAP.md) for the full phase breakdown.
 
