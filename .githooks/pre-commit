@@ -1,9 +1,15 @@
 #!/bin/sh
-# Mirrors the CI lint jobs. Run `cargo xtask install-hooks` to activate.
+# Mirrors CI. Run `cargo xtask install-hooks` to activate.
 set -e
 
-echo "» cargo fmt --check"
-cargo fmt --all -- --check
+echo "» cargo fmt"
+cargo fmt --all
+
+echo "» cargo check"
+cargo check --workspace --all-targets
 
 echo "» cargo clippy"
 cargo clippy --workspace --all-targets -- -D warnings
+
+echo "» cargo test"
+cargo test --workspace
