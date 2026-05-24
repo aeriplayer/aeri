@@ -113,7 +113,7 @@ cargo run -p aeri-cli -- play /path/to/track.flac
 cargo run -p aeri-cli -- queue list
 cargo run -p aeri-cli -- pause
 
-# Lint (must pass clean)
+# Lint — must pass clean before every commit
 cargo clippy --workspace --all-targets -- -D warnings
 
 # Format
