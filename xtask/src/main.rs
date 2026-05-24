@@ -4,11 +4,28 @@ fn main() {
     let task = std::env::args().nth(1).unwrap_or_default();
     match task.as_str() {
         "gen-proto" => gen_proto(),
-        "release" => unimplemented!("release: wired up in Phase 1 via cargo-dist; run `cargo dist build`"),
+        "install-hooks" => install_hooks(),
+        "release" => {
+            unimplemented!("release: wired up in Phase 1 via cargo-dist; run `cargo dist build`")
+        }
         _ => {
-            eprintln!("unknown task: {task:?}\n\nknown tasks:\n  gen-proto\n  release");
+            eprintln!(
+                "unknown task: {task:?}\n\nknown tasks:\n  gen-proto\n  install-hooks\n  release"
+            );
             std::process::exit(1);
         }
+    }
+}
+
+fn install_hooks() {
+    let status = Command::new("git")
+        .args(["config", "core.hooksPath", ".githooks"])
+        .status()
+        .expect("failed to invoke git");
+    if status.success() {
+        println!("pre-commit hook installed (.githooks/)");
+    } else {
+        std::process::exit(status.code().unwrap_or(1));
     }
 }
 
