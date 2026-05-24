@@ -21,16 +21,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         return Ok(());
     }
 
-    let protos = &["../../proto/aeri/v1/player.proto"];
+    let proto_files = &["../../proto/aeri/v1/player.proto"];
     let includes = &["../../proto/"];
 
     buffa_build::Config::new()
-        .files(protos)
+        .files(proto_files)
         .includes(includes)
         .compile()?;
 
     connectrpc_build::Config::new()
-        .files(protos)
+        .files(proto_files)
         .includes(includes)
         .compile()?;
 
