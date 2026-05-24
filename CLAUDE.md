@@ -62,6 +62,13 @@ aeri/
   a justification or propagate errors properly.
 - Logging is `tracing` only. No `println!` outside CLI user-facing output and tests.
 
+### Branching
+
+- **Never commit directly to `main`.**
+- Each phase gets its own branch: `phase-2`, `phase-3`, etc.
+- All work for a phase is committed to that branch.
+- A phase branch is merged to `main` before the next phase begins.
+
 ### Commits
 
 Conventional Commits, scoped by crate:
