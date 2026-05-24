@@ -107,7 +107,7 @@ of every query path is expected.
 cargo xtask install-hooks
 ```
 
-Run this once after cloning. The hook blocks commits that would fail CI.
+Run this once after cloning. The hook runs fmt, check, clippy, and tests before every commit.
 
 ## Build and run
 
@@ -128,12 +128,6 @@ cargo run -p aeri-cli -- daemon
 cargo run -p aeri-cli -- play /path/to/track.flac
 cargo run -p aeri-cli -- queue list
 cargo run -p aeri-cli -- pause
-
-# Lint — must pass clean before every commit
-cargo clippy --workspace --all-targets -- -D warnings
-
-# Format
-cargo fmt --all
 
 # Generate IPC code (run after editing .proto files; requires protoc)
 cargo xtask gen-proto
