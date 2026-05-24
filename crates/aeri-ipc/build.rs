@@ -6,8 +6,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let protoc_available = Command::new("protoc")
         .arg("--version")
         .status()
-        .map(|s| s.success())
-        .unwrap_or(false);
+        .is_ok_and(|s| s.success());
 
     if !protoc_available {
         println!(

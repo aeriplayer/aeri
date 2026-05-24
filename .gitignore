@@ -1,5 +1,9 @@
 /target/
 /dist/
 dist-manifest.json
+.mcp.json
+.opencode.json
+.claude/
+.vscode/
 # Added by code-review-graph
 .code-review-graph/
