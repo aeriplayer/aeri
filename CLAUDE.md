@@ -93,6 +93,15 @@ docs(architecture): record ring buffer sizing rationale
 The integration test suite is the source of confidence for the library crate. Coverage
 of every query path is expected.
 
+## First-time setup
+
+```bash
+# Install the pre-commit hook (fmt + clippy — mirrors CI)
+cargo xtask install-hooks
+```
+
+Run this once after cloning. The hook blocks commits that would fail CI.
+
 ## Build and run
 
 ```bash
