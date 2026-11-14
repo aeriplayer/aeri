@@ -1,6 +1,7 @@
 # aeri
 
-Modern audio player for macOS and Linux. Apple Silicon and modern Linux only. Pure Rust.
+Modern audio player for macOS and Linux. Apple Silicon and modern Linux only. Rust
+throughout, with one C codec (libopus).
 
 This document is the source of truth for **project conventions, build commands, and
 current status**. System design and structural decisions live in
@@ -8,9 +9,15 @@ current status**. System design and structural decisions live in
 
 ## Current status
 
-Phase 1 (CI + cargo-dist) complete. Next: Phase 2 (core domain types).
+Phase 1 (CI + cargo-dist) complete. Next: Phase 2 (core playback types), which has no
+blockers and leads straight into Phase 3 (first audio).
 
-Resolve metadata schema and daemon concurrency model before writing any Phase 2 code.
+Decisions are recorded as ADRs in `docs/adr/` (0001–0009). The metadata schema is
+deliberately deferred to Phase 4.
+
+Six crates exist today: `aeri-core`, `aeri-audio`, `aeri-decode`, `aeri-engine`,
+`aeri-ipc`, `aeri-cli`. Crates marked *planned* below are created in the phase that
+first needs them — do not scaffold them early.
 
 See [`docs/ROADMAP.md`](docs/ROADMAP.md) for the full phase breakdown.
 
@@ -28,22 +35,22 @@ aeri/
 ├── proto/                      # .proto files for IPC
 │   └── aeri/v1/player.proto
 ├── crates/
-│   ├── aeri-core/              # domain types: Track, Album, PlaybackState, Queue
-│   ├── aeri-audio/             # cpal output, PipeWire + CoreAudio backends, RT thread
+│   ├── aeri-core/              # domain types: Track, PlaybackState, Queue (schema in Phase 4)
+│   ├── aeri-audio/             # OutputSink, native CoreAudio + PipeWire sinks, RT thread
 │   ├── aeri-decode/            # symphonia adapter, format trait
-│   ├── aeri-dsp/               # DSP nodes: replay gain, EQ, resampler integration
-│   ├── aeri-library/           # rusqlite + FTS5, lofty, scanning, filesystem watch
+│   ├── aeri-dsp/               # (planned, Phase 5) DSP nodes: replay gain, EQ, resampler
+│   ├── aeri-library/           # (planned, Phase 4) rusqlite + FTS5, lofty, scanning
 │   ├── aeri-engine/            # composes audio + decode + dsp + library
 │   ├── aeri-ipc/               # connectrpc service, Player trait, Local + Remote impls
-│   ├── aeri-platform/          # MPRIS (Linux), MediaPlayer framework (macOS)
+│   ├── aeri-platform/          # (planned, Phase 5) MPRIS / MediaPlayer; a Player client
 │   ├── aeri-stream/            # (planned, post-v1) HTTP audio streaming + Subsonic API
 │   ├── aeri-cli/               # `aeri` binary; also runs as daemon
-│   └── aeri-gui/               # iced GUI binary
+│   └── aeri-gui/               # (planned, Phase 6) GPUI GUI binary
 ├── xtask/                      # build/release automation
 ├── pkg/
 │   ├── aur/                    # PKGBUILD
 │   └── homebrew/               # Formula
-└── docs/                       # ARCHITECTURE.md, ROADMAP.md, ADRs
+└── docs/                       # ARCHITECTURE.md, ROADMAP.md, adr/
 ```
 
 ## Conventions
@@ -51,11 +58,14 @@ aeri/
 ### Rust
 
 - Edition 2024
-- `rust-toolchain.toml` pins latest stable; bump as new stable releases ship
+- `rust-toolchain.toml` pins an exact stable (currently `1.95.0`), so CI cannot break
+  on an unrelated Rust release; bump it in its own commit with clippy verified green
 - Workspace `[lints.clippy]` enables `pedantic` and `nursery` at warn; targeted
   overrides for noisy lints documented in the workspace `Cargo.toml`
-- `rustfmt.toml`: defaults plus `imports_granularity = "Module"` and
-  `group_imports = "StdExternalCrate"`
+- `rustfmt.toml`: defaults, pinned to `edition`/`style_edition` 2024. Import granularity
+  and grouping are *not* configured — `imports_granularity` and `group_imports` are
+  nightly-only rustfmt options and are silently ignored on the pinned stable toolchain,
+  so import layout is a review convention rather than an enforced one
 - `unsafe` is forbidden outside `aeri-audio` (where FFI and real-time bridges live).
   Every `unsafe` block requires a `// SAFETY:` comment explaining the invariant.
 - `unwrap()` is forbidden outside tests, `examples/`, and `xtask/`. Use `expect()` with
@@ -118,7 +128,7 @@ cargo check --workspace --all-targets
 # Run unit + integration tests
 cargo test --workspace
 
-# Run the GUI
+# Run the GUI (from Phase 6)
 cargo run -p aeri-gui
 
 # Run the daemon

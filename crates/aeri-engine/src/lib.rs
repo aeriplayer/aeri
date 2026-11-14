@@ -1,1 +1,1 @@
-//! Player engine: composes audio output, decoder, DSP pipeline, library, and platform integration.
+//! Player engine: composes audio output and decoding. DSP and the library join in later phases.
