@@ -1,9 +1,14 @@
 name: CI
 
+# Every check is defined once, in prek.toml. This workflow only decides where
+# each group of hooks runs; it does not restate any command.
+
 on:
   push:
     branches: ["main"]
   pull_request:
+
+permissions: {}
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -13,11 +18,43 @@ env:
   CARGO_TERM_COLOR: always
   CARGO_INCREMENTAL: 0
   RUST_BACKTRACE: 1
+  # Hooks that only make sense on a developer machine: CI builds `main` itself,
+  # and merge commits created by GitHub are not signed with a contributor key.
+  PREK_SKIP: no-commit-to-branch,check-signed-commit
 
 jobs:
-  ci:
+  # Everything that gives the same answer on every platform: hygiene, formatting,
+  # spelling, workflow security, unused dependencies, dependency policy.
+  checks:
+    name: checks
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Rust toolchain
+        run: rustup toolchain install # reads rust-toolchain.toml
+
+      - uses: j178/prek-action@44924fe9ef4a6f88253c4b6b1bf11c689d3ce53d # v3.1.0
+        with:
+          install-only: true
+
+      - name: Commit-stage hooks
+        run: prek run --all-files --stage pre-commit --show-diff-on-failure --no-group target
+
+      - name: Push-stage hooks
+        run: prek run --all-files --stage pre-push --no-group target
+
+  # Hooks in the `target` group — clippy, tests, docs — compile `cfg(target_os)`
+  # code, so they run once per supported platform.
+  target:
     name: ${{ matrix.target }}
     runs-on: ${{ matrix.runner }}
+    permissions:
+      contents: read
     strategy:
       fail-fast: false
       matrix:
@@ -30,26 +67,25 @@ jobs:
             runner: ubuntu-24.04-arm
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
-      - name: Install system dependencies (Linux)
+      - name: Install protoc (Linux)
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update -q
-          sudo apt-get install -y --no-install-recommends \
-            libpipewire-0.3-dev \
-            pkg-config \
-            protobuf-compiler
+          sudo apt-get install -y --no-install-recommends protobuf-compiler
 
-      - name: Install system dependencies (macOS)
+      - name: Install protoc (macOS)
         if: runner.os == 'macOS'
         run: brew install protobuf
 
       - name: Set up Rust toolchain
-        run: rustup show  # picks up rust-toolchain.toml, installs clippy + rustfmt
+        run: rustup toolchain install # reads rust-toolchain.toml
 
       - name: Cache cargo registry
-        uses: actions/cache@v5
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: |
             ~/.cargo/registry/index/
@@ -58,20 +94,15 @@ jobs:
           key: ${{ matrix.target }}-cargo-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: ${{ matrix.target }}-cargo-
 
-      - name: cargo fmt --check
-        run: cargo fmt --all -- --check
-
-      - name: cargo check
-        run: cargo check --workspace --all-targets
+      - uses: j178/prek-action@44924fe9ef4a6f88253c4b6b1bf11c689d3ce53d # v3.1.0
+        with:
+          install-only: true
 
       - name: cargo clippy
-        run: cargo clippy --workspace --all-targets -- -D warnings
+        run: prek run --all-files --stage pre-commit --group target
 
-      - name: cargo test
-        run: cargo test --workspace
+      - name: cargo test, cargo doc
+        run: prek run --all-files --stage pre-push --group target
 
-      # CLAUDE.md requires `cargo doc` to be warning-free; enforce it here.
-      - name: cargo doc
-        env:
-          RUSTDOCFLAGS: -D warnings
-        run: cargo doc --workspace --no-deps --document-private-items
+      - name: aeri-ipc builds without the engine (ADR 0003)
+        run: cargo check --package aeri-ipc --no-default-features --locked

@@ -1,0 +1,27 @@
+# Dependency policy, enforced by the `cargo-deny` hook at pre-push and in CI.
+# This is the mechanical half of the "defensible dependencies" pillar in
+# docs/ARCHITECTURE.md.
+
+[graph]
+# Only the platforms aeri ships on; a Windows-only advisory is not ours to chase.
+targets      = ["aarch64-apple-darwin", "x86_64-unknown-linux-gnu", "aarch64-unknown-linux-gnu"]
+all-features = true
+
+[advisories]
+version = 2
+yanked  = "deny"
+
+[licenses]
+version              = 2
+confidence-threshold = 0.93
+# Permissive licences compatible with shipping `MIT OR Apache-2.0` binaries.
+allow = ["MIT", "Apache-2.0", "Unicode-3.0", "Zlib"]
+
+[bans]
+multiple-versions    = "warn"
+wildcards            = "deny"
+allow-wildcard-paths = true
+
+[sources]
+unknown-registry = "deny"
+unknown-git      = "deny"

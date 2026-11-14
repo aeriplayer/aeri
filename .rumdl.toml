@@ -1,0 +1,9 @@
+# Markdown lint, enforced by the `rumdl` hooks.
+
+[global]
+line-length = 100
+
+[MD013]
+line-length = 100
+tables      = false
+code-blocks = false
