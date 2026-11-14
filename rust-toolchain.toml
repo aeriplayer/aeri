@@ -1,5 +1,5 @@
 # Pinned deliberately so CI cannot break on an unrelated Rust release.
 # Bump in its own commit, with `cargo clippy -- -D warnings` verified green.
 [toolchain]
-channel = "1.95.0"
+channel    = "1.95.0"
 components = ["clippy", "rustfmt"]

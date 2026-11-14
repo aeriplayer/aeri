@@ -14,58 +14,38 @@ members = [
 resolver = "3"
 
 [workspace.package]
-version = "0.1.0"
-edition = "2024"
-license = "MIT OR Apache-2.0"
-repository = "https://github.com/aeriplayer/aeri"
-authors = ["Elliot Farmer Garcia"]
+version      = "0.1.0"
+edition      = "2024"
+license      = "MIT OR Apache-2.0"
+repository   = "https://github.com/aeriplayer/aeri"
+authors      = ["Elliot Farmer Garcia"]
 rust-version = "1.95"
+# aeri ships as binaries, not as crates.io packages. This also lets cargo-deny tell
+# the workspace's own path dependencies apart from wildcard version requirements.
+publish = false
 
 [workspace.dependencies]
 # Internal
-aeri-core     = { path = "crates/aeri-core" }
-aeri-audio    = { path = "crates/aeri-audio" }
-aeri-decode   = { path = "crates/aeri-decode" }
-aeri-engine   = { path = "crates/aeri-engine" }
+aeri-core   = { path = "crates/aeri-core" }
+aeri-audio  = { path = "crates/aeri-audio" }
+aeri-decode = { path = "crates/aeri-decode" }
+aeri-engine = { path = "crates/aeri-engine" }
 # default-features off so a `Player`-only consumer (aeri-platform, Phase 5) does not
 # pull in the engine; hosts that own an engine enable `local` explicitly (ADR 0003).
-aeri-ipc      = { path = "crates/aeri-ipc", default-features = false }
+aeri-ipc = { path = "crates/aeri-ipc", default-features = false }
 
-# Async runtime
-tokio = { version = "1.53.1", features = ["full"] }
+# External dependencies are added when the first line of code needs them, at the
+# then-current version — cargo-machete fails the build on any that go unused. The
+# crates already chosen for later phases are recorded in docs/ARCHITECTURE.md.
 
-# Lock-free ring buffer
-rtrb = "0.4"
+# IPC code generation (build-dependencies of aeri-ipc).
+# Keep these two on the same minor: connectrpc 0.8 requires `buffa ^0.8.1`, and
+# mixing in buffa 0.9 would generate types its service traits cannot accept.
+connectrpc-build = "0.8" # Tower service stubs from .proto
+buffa-build      = "0.8" # .proto → Rust types
 
-# Native audio output backends — no cpal (ADR 0004)
-coreaudio-rs = "0.14.2" # macOS — hog mode, bit-perfect
-pipewire     = "0.10" # Linux — PipeWire only, bit-perfect best-effort
-
-# Decode
-symphonia = { version = "0.6.1", default-features = false, features = [
-    "mp3", "flac", "vorbis", "ogg", "wav", "aiff", "pcm",
-    "aac", "alac", "isomp4", # ADR 0008
-] }
-# Opus via the libopus C library — the one sanctioned C codec (ADR 0008).
-symphonia-adapter-libopus = "0.3"
-
-# IPC — Connect-RPC + Protobuf
-connectrpc        = { version = "0.8", features = ["client", "server"] }
-connectrpc-build  = "0.8"  # build-dep: generates Tower service stubs from .proto
-# buffa is held at 0.8 to match connectrpc 0.8's `buffa ^0.8.1` requirement.
-# Using 0.9 here resolves two incompatible protobuf runtimes: buffa-build would
-# generate 0.9 types that connectrpc's 0.8 service traits cannot accept.
-# Bump both together when connectrpc moves to buffa 0.9.
-buffa             = "0.8"
-buffa-build       = "0.8"  # build-dep: compiles .proto to Rust types
-
-# Error handling
-thiserror = "2.0.20"
-anyhow    = "1.0.104"
-
-# Observability
-tracing            = "0.1.44"
-tracing-subscriber = { version = "0.3.23", features = ["env-filter"] }
+# Error handling (binaries and xtask)
+anyhow = "1.0.104"
 
 # Workspace-wide lint configuration.
 # pedantic/nursery are at priority -1 so individual #[allow] overrides still work.

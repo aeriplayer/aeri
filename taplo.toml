@@ -1,0 +1,11 @@
+# TOML formatting, enforced by the `taplo-format` hook.
+[formatting]
+column_width        = 100
+indent_string       = "    "
+align_entries       = true
+align_comments      = true
+array_auto_expand   = true
+array_auto_collapse = false
+reorder_keys        = false
+reorder_arrays      = false
+allowed_blank_lines = 1

@@ -1,15 +1,17 @@
 [package]
-name = "aeri-ipc"
-version.workspace = true
-edition.workspace = true
-license.workspace = true
-description = "Connect-RPC service, Player trait, LocalPlayer and RemotePlayer implementations"
+name                   = "aeri-ipc"
+version.workspace      = true
+edition.workspace      = true
+license.workspace      = true
+rust-version.workspace = true
+publish.workspace      = true
+description            = "Connect-RPC service, Player trait, LocalPlayer and RemotePlayer implementations"
 
 [lints]
 workspace = true
 
 [build-dependencies]
-buffa-build.workspace = true
+buffa-build.workspace      = true
 connectrpc-build.workspace = true
 
 [features]
@@ -19,10 +21,9 @@ default = ["local"]
 local = ["dep:aeri-engine"]
 
 [dependencies]
-aeri-core.workspace = true
+# Declared ahead of `LocalPlayer` so the feature boundary from ADR 0003 is checked by CI
+# (`--no-default-features` must build) from the start.
 aeri-engine = { workspace = true, optional = true }
-connectrpc.workspace = true
-buffa.workspace = true
-tokio.workspace = true
-thiserror.workspace = true
-tracing.workspace = true
+
+[package.metadata.cargo-machete]
+ignored = ["aeri-engine"] # see the note on the dependency above

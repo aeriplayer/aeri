@@ -28,6 +28,10 @@ aeri/
 ├── Cargo.toml                  # workspace root, [workspace.dependencies], [workspace.lints]
 ├── rust-toolchain.toml         # latest stable
 ├── rustfmt.toml                # minimal
+├── prek.toml                   # Git hooks; the single definition of "passes checks"
+├── deny.toml                   # cargo-deny: licences, advisories, sources
+├── committed.toml              # commit message policy
+├── taplo.toml · .rumdl.toml    # TOML and Markdown formatting
 ├── dist-workspace.toml         # cargo-dist
 ├── LICENSE-MIT
 ├── LICENSE-APACHE
@@ -81,7 +85,10 @@ aeri/
 
 ### Commits
 
-Conventional Commits, scoped by crate:
+Conventional Commits, scoped by crate. Enforced at commit time (`committed.toml`):
+imperative subject of at most 72 characters, no trailing full stop, type one of `feat`,
+`fix`, `perf`, `refactor`, `docs`, `test`, `build`, `ci`, `chore`, `revert`. Commits are
+signed and carry no AI-attribution trailers.
 
 ```text
 feat(engine): preload next track 5s before end of current
@@ -113,11 +120,41 @@ of every query path is expected.
 ## First-time setup
 
 ```bash
-# Install the pre-commit hook (fmt + clippy — mirrors CI)
+# Install prek (https://prek.j178.dev), then the Git hooks
+brew install prek
 cargo xtask install-hooks
 ```
 
-Run this once after cloning. The hook blocks commits that would fail CI.
+Run this once after cloning.
+
+## Checks
+
+Every check is defined once, in `prek.toml`, and CI runs that file rather than
+restating commands. Hooks run at three points:
+
+| Stage | What runs |
+| --- | --- |
+| `commit-msg` | Conventional Commits (`committed.toml`); no AI-attribution trailers |
+| `pre-commit` | Hygiene, `cargo fmt`, typos, TOML and Markdown formatting, workflow lint (actionlint, zizmor), unused dependencies (cargo-machete), `cargo clippy -D warnings`; refuses commits on `main` |
+| `pre-push` | `cargo test`, `cargo doc -D warnings`, `cargo deny`, signed-commit check |
+
+```bash
+# Commit-stage hooks over the whole tree
+prek run --all-files
+
+# Push-stage hooks (tests, docs, dependency policy)
+prek run --all-files --stage pre-push
+
+# One hook
+prek run cargo-clippy --all-files
+
+# Move every pinned hook to its latest release (pins are commit SHAs, 7-day cooldown)
+prek update
+```
+
+Formatters rewrite files and fail the commit; re-stage and commit again. Never bypass
+hooks with `--no-verify`. A dependency that nothing uses fails `cargo-machete`, so add
+dependencies with the code that needs them, not ahead of it.
 
 ## Build and run
 
@@ -139,8 +176,8 @@ cargo run -p aeri-cli -- play /path/to/track.flac
 cargo run -p aeri-cli -- queue list
 cargo run -p aeri-cli -- pause
 
-# Lint — must pass clean before every commit
-cargo clippy --workspace --all-targets -- -D warnings
+# Lint — runs on every commit via prek; this is the same command
+cargo clippy --workspace --all-targets --all-features --locked -- -D warnings
 
 # Format
 cargo fmt --all

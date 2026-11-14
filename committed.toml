@@ -1,0 +1,23 @@
+# Commit message policy, enforced by the `committed` hook at commit-msg.
+# See CLAUDE.md § Commits.
+style = "conventional"
+allowed_types = [
+    "feat",
+    "fix",
+    "perf",
+    "refactor",
+    "docs",
+    "test",
+    "build",
+    "ci",
+    "chore",
+    "revert",
+]
+subject_length = 72
+line_length = 100
+subject_capitalized = false
+subject_not_punctuated = true
+imperative_subject = true
+no_fixup = true
+no_wip = true
+merge_commit = false

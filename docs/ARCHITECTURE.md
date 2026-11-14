@@ -321,7 +321,7 @@ process hosting the engine starts them; a remote-only client never does.
 ### Format support (v0.1 floor)
 
 MP3, FLAC, Ogg Vorbis, Opus, WAV, AIFF, AAC, ALAC (the last two in MP4/M4A) — see
-ADR 0008. No Monkey's Audio, TAK, WavPack, or DSD. No DRM-protected files.
+ADR 0008. No Monkey's Audio, TAKE, WavPack, or DSD. No DRM-protected files.
 
 ---
 
