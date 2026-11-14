@@ -3,14 +3,13 @@ name = "aeri-audio"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-description = "Audio output: cpal, CoreAudio/PipeWire backends, real-time thread"
+description = "Audio output: OutputSink trait, native CoreAudio/PipeWire backends, real-time thread"
 
 [lints]
 workspace = true
 
 [dependencies]
 aeri-core.workspace = true
-cpal.workspace = true
 rtrb.workspace = true
 thiserror.workspace = true
 tracing.workspace = true

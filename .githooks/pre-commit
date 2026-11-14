@@ -2,8 +2,11 @@
 # Mirrors CI. Run `cargo xtask install-hooks` to activate.
 set -e
 
-echo "» cargo fmt"
-cargo fmt --all
+# --check, not a bare `cargo fmt`: rewriting the tree here does not re-stage the
+# files, so a reformat after `git add` would commit the *unformatted* version and
+# then fail CI's `fmt --check` on a commit whose hook passed.
+echo "» cargo fmt --check"
+cargo fmt --all -- --check
 
 echo "» cargo check"
 cargo check --workspace --all-targets
