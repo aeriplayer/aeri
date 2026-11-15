@@ -1,7 +1,6 @@
 # Architecture decision records
 
-An ADR records one decision, why it was made, and what it costs. The code shows *what*
-was built; these files are the only place that says *why*, and why not the alternative.
+An ADR records one decision, why it was made, and what it costs. The code shows *what* was built; these files are the only place that says *why*, and why not the alternative.
 
 ## When an ADR is required
 
@@ -10,27 +9,19 @@ Write one **before** the code when a change does any of the following:
 - adds, removes, or replaces a dependency that shapes a crate (not a patch bump);
 - adds a crate, or changes which crate may depend on which;
 - changes a "locked decision" or a pillar in [`ARCHITECTURE.md`](../ARCHITECTURE.md);
-- changes a public trait that crosses a crate boundary (`OutputSink`, `Decoder`,
-  `DspNode`), or the `Player` handle's existing methods;
+- changes a public trait that crosses a crate boundary (`OutputSink`, `Decoder`, `DspNode`), or the `Player` handle's existing methods;
 - introduces `unsafe` somewhere new, a new thread, or a new channel between threads;
 - relaxes a lint, a hook, or a `deny.toml` rule.
 
-Not required for: bug fixes, tests, refactors inside one crate that keep its public
-API, documentation, and dependency patch updates.
+Not required for: bug fixes, tests, refactors inside one crate that keep its public API, documentation, and dependency patch updates.
 
 ## Rules
 
-1. **Never contradict an accepted ADR silently.** If code needs to go against one,
-   write a new ADR that supersedes it, and get the user's agreement first. "It was
-   easier" is not a reason; a fact the old ADR did not know is.
-2. **ADRs are append-only.** Do not rewrite an accepted ADR's decision. To change
-   course, add a new ADR and set the old one's status to `Superseded by ADR NNNN`.
-3. **State what you verified and what you did not.** If a claim about a library or
-   platform comes from memory, say so and say when it must be checked.
-4. **Every ADR names its costs.** A decision with no downside listed has not been
-   thought through.
-5. **Update the index:** add the decision to the "Resolved" table in
-   `ARCHITECTURE.md`, and remove it from "Open decisions" if it was listed.
+1. **Never contradict an accepted ADR silently.** If code needs to go against one, write a new ADR that supersedes it, and get the user's agreement first. "It was easier" is not a reason; a fact the old ADR did not know is.
+2. **ADRs are append-only.** Do not rewrite an accepted ADR's decision. To change course, add a new ADR and set the old one's status to `Superseded by ADR NNNN`.
+3. **State what you verified and what you did not.** If a claim about a library or platform comes from memory, say so and say when it must be checked.
+4. **Every ADR names its costs.** A decision with no downside listed has not been thought through.
+5. **Update the index:** add the decision to the "Resolved" table in `ARCHITECTURE.md`, and remove it from "Open decisions" if it was listed.
 
 ## Template
 
