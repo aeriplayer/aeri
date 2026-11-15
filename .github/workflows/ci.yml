@@ -215,14 +215,10 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Set up Rust toolchain
-        run: rustup toolchain install
-
-      - name: Install cargo-dist
-        run: |
-          curl --proto '=https' --tlsv1.2 -LsSf \
-            https://github.com/axodotdev/cargo-dist/releases/download/v0.32.0/cargo-dist-installer.sh \
-            | sh
+      - uses: $/.github/actions/setup
+        with:
+          tools: "cargo-dist"
+          cache-key: release-plan
 
       - name: dist plan
         run: dist plan --output-format=json

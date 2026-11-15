@@ -24,11 +24,10 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - name: Install cargo-dist
-        run: |
-          curl --proto '=https' --tlsv1.2 -LsSf \
-            https://github.com/axodotdev/cargo-dist/releases/download/v0.32.0/cargo-dist-installer.sh \
-            | sh
+      - uses: $/.github/actions/setup
+        with:
+          tools: "cargo-dist"
+          cache-key: release-plan
       - id: plan
         run: |
           dist plan --tag="$TAG" --output-format=json \
@@ -63,14 +62,10 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Install cargo-dist
-        run: |
-          curl --proto '=https' --tlsv1.2 -LsSf \
-            https://github.com/axodotdev/cargo-dist/releases/download/v0.32.0/cargo-dist-installer.sh \
-            | sh
-
-      - name: Set up Rust toolchain
-        run: rustup toolchain install
+      - uses: $/.github/actions/setup
+        with:
+          tools: "cargo-dist"
+          cache-key: release-${{ matrix.target }}
 
       - name: Build release artifacts
         run: |
@@ -114,11 +109,10 @@ jobs:
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: dist-manifest.json
-      - name: Install cargo-dist
-        run: |
-          curl --proto '=https' --tlsv1.2 -LsSf \
-            https://github.com/axodotdev/cargo-dist/releases/download/v0.32.0/cargo-dist-installer.sh \
-            | sh
+      - uses: $/.github/actions/setup
+        with:
+          tools: "cargo-dist"
+          cache-key: release-publish
       - name: Create GitHub release and upload artifacts
         run: |
           dist host \
