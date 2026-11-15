@@ -26,7 +26,18 @@ deny = [
 # Crates whose build scripts run arbitrary code at compile time; `cargo xtask check-deps`
 # rejects entries that no longer match a crate.
 [bans.build]
-allow-build-scripts = ["anyhow", "fs-err", "serde_core", "serde_json", "zmij"]
+allow-build-scripts = [
+    "anyhow",
+    "camino",
+    "fs-err",
+    "proc-macro2",
+    "quote",
+    "serde",
+    "serde_core",
+    "serde_json",
+    "thiserror",
+    "zmij",
+]
 
 [sources]
 unknown-registry = "deny"
