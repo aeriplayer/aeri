@@ -1,7 +1,8 @@
 name: Set up aeri
 description: >-
   Everything a job needs before it can run hooks: the pinned Rust toolchain, a
-  cargo cache, prek, and (optionally) the cargo tools the hooks call.
+  cache of the registry and compiled dependencies, prek, and (optionally) the
+  cargo tools the hooks call.
 
 inputs:
   tools:
@@ -21,15 +22,11 @@ runs:
       shell: bash
       run: rustup toolchain install # reads rust-toolchain.toml
 
-    - name: Cache cargo registry
-      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+    # Pull requests read the cache; only main writes it, so a branch cannot poison it.
+    - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
       with:
-        path: |
-          ~/.cargo/registry/index/
-          ~/.cargo/registry/cache/
-          ~/.cargo/git/db/
-        key: ${{ inputs.cache-key }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-        restore-keys: ${{ inputs.cache-key }}-cargo-
+        key: ${{ inputs.cache-key }}
+        save-if: ${{ github.ref == 'refs/heads/main' }}
 
     - uses: j178/prek-action@44924fe9ef4a6f88253c4b6b1bf11c689d3ce53d # v3.1.0
       with:

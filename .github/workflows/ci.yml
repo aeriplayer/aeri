@@ -8,21 +8,64 @@ on:
 permissions: {}
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  # A re-run of an older commit must not cancel the latest push to the same pull request.
+  group: ${{ github.workflow }}-${{ github.ref_name }}-${{ github.run_attempt == 1 && github.event.pull_request.number || github.sha }}
   cancel-in-progress: true
 
 env:
   CARGO_TERM_COLOR: always
   CARGO_INCREMENTAL: 0
+  CARGO_NET_RETRY: 10
+  RUSTUP_MAX_RETRIES: 10
   RUST_BACKTRACE: 1
   NEXTEST_PROFILE: ci
   # Developer-machine guards; GitHub's merge commits carry no contributor signature.
   PREK_SKIP: no-commit-to-branch,check-signed-commit
 
 jobs:
+  plan:
+    name: plan
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    outputs:
+      code: ${{ steps.changes.outputs.code }}
+      release: ${{ steps.changes.outputs.release }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 2 # the pull request's merge commit and its base
+
+      - name: Classify the changed files
+        id: changes
+        env:
+          EVENT: ${{ github.event_name }}
+        run: |
+          if [[ "$EVENT" != "pull_request" ]]; then
+            echo "code=true" >> "$GITHUB_OUTPUT"
+            echo "release=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          changed() { ! git diff --quiet HEAD^1 HEAD -- "$@"; }
+          if changed . ':(exclude)docs/' ':(exclude)*.md' ':(exclude).claude/' \
+            ':(exclude)LICENSE-*' ':(exclude)COPYRIGHT' ':(exclude).rumdl.toml'; then
+            echo "code=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "code=false" >> "$GITHUB_OUTPUT"
+          fi
+          if changed dist-workspace.toml .github/workflows/release.yml rust-toolchain.toml \
+            Cargo.toml Cargo.lock ':(glob)crates/*/Cargo.toml'; then
+            echo "release=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "release=false" >> "$GITHUB_OUTPUT"
+          fi
+
   checks:
     name: checks
     runs-on: ubuntu-24.04
+    timeout-minutes: 20
     permissions:
       contents: read
     steps:
@@ -32,6 +75,7 @@ jobs:
 
       - uses: $/.github/actions/setup
         with:
+          tools: "cargo-shear"
           cache-key: checks
 
       - name: Commit-stage hooks
@@ -43,7 +87,10 @@ jobs:
   # `cfg(target_os)` code makes these results differ per platform.
   target:
     name: ${{ matrix.target }}
+    needs: plan
+    if: needs.plan.outputs.code == 'true'
     runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
     permissions:
       contents: read
     strategy:
@@ -75,7 +122,10 @@ jobs:
 
   coverage:
     name: coverage
+    needs: plan
+    if: needs.plan.outputs.code == 'true'
     runs-on: ubuntu-24.04
+    timeout-minutes: 30
     permissions:
       contents: read
     steps:
@@ -93,8 +143,10 @@ jobs:
 
   mutants:
     name: mutants
-    if: github.event_name == 'pull_request'
+    needs: plan
+    if: github.event_name == 'pull_request' && needs.plan.outputs.code == 'true'
     runs-on: ubuntu-24.04
+    timeout-minutes: 60
     permissions:
       contents: read
     env:
@@ -115,7 +167,10 @@ jobs:
 
   miri:
     name: miri
+    needs: plan
+    if: needs.plan.outputs.code == 'true'
     runs-on: ubuntu-24.04
+    timeout-minutes: 30
     permissions:
       contents: read
     steps:
@@ -132,3 +187,42 @@ jobs:
 
       - name: cargo miri test
         run: prek run miri --all-files --stage manual
+
+  cooldown:
+    name: crate cooldown
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      actions: read # reuses crate publication times saved by the last green run on main
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: astral-sh/github-actions/cargo-cooldowns@4d0d0b9f3efeb82c92183f4423e395b81c3fcf5e
+
+  release-plan:
+    name: release plan
+    needs: plan
+    if: needs.plan.outputs.release == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Rust toolchain
+        run: rustup toolchain install
+
+      - name: Install cargo-dist
+        run: |
+          curl --proto '=https' --tlsv1.2 -LsSf \
+            https://github.com/axodotdev/cargo-dist/releases/download/v0.32.0/cargo-dist-installer.sh \
+            | sh
+
+      - name: dist plan
+        run: dist plan --output-format=json
