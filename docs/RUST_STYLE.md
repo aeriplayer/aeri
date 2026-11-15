@@ -25,6 +25,11 @@ struct SampleRate(NonZeroU32);
 - A value with a rule (non-zero, in range, non-empty) is a newtype with a private field and one checked constructor. Validate once at the boundary; everything inside trusts the type. This is "parse, don't validate".
 - A function that takes two values of the same primitive type (`fn seek(a: u64, b: u64)`) wants newtypes, so the arguments cannot be swapped.
 
+### Matches and control flow
+
+- **Match exhaustively.** Name every variant of our own enums instead of writing a `_` arm, so adding a variant makes the compiler list every place that must decide what it means. `matches!` and `_` are for foreign `#[non_exhaustive]` enums, where the wildcard is required, and for genuinely open sets such as integers.
+- **Prefer let-chains to nesting.** `if let Some(track) = next && track.is_playable() { … }` (edition 2024) over an `if let` inside an `if let`. The same goes for `let … else` to return early instead of indenting the happy path.
+
 ## 2. Errors
 
 - **Library crates** define their own error `enum` with `thiserror`, one per crate or per major operation, named for what failed (`DecodeError`, not `Error`). Mark it `#[non_exhaustive]`. Keep the underlying cause with `#[source]` or `#[from]`.
@@ -33,6 +38,7 @@ struct SampleRate(NonZeroU32);
 - **No `unwrap()`** outside tests (lint-enforced). `expect("…")` is allowed only when the message states why failure is impossible: `.expect("capacity was checked non-zero above")`. If you cannot write that sentence truthfully, return an error.
 - **No panics for bad input.** A corrupt file, a missing device, and a full disk are ordinary results. Panics are for broken invariants in our own code.
 - Error messages are lowercase, without trailing punctuation, and do not repeat their source: `"failed to open output device"`, not `"Error: Failed to open device: {e}."`.
+- Files are read and written through `fs_err`, not `std::fs`, so every I/O error names its path ([ADR 0012](adr/0012-filesystem-through-fs-err.md); `clippy.toml` enforces it).
 
 ## 3. Ownership and borrowing
 
@@ -56,7 +62,7 @@ struct SampleRate(NonZeroU32);
 - **Share by communicating.** State owned by one thread and reached through channels (the actor pattern, ADR 0004) is preferred over `Arc<Mutex<T>>`. A mutex is acceptable for small, rarely contended data with no ordering concerns; say why in a comment.
 - Never hold a lock across an `.await`.
 - Blocking work (file I/O, decoding, SQLite) does not run on async worker threads: it gets its own thread or `spawn_blocking`.
-- Long-lived threads are named (`std::thread::Builder::new().name(…)`) and joined on shutdown. Shutdown is driven by dropping the handle or closing the channel, not by a method callers must remember.
+- Long-lived threads are named (`std::thread::Builder::new().name(…)`; `clippy.toml` bans `std::thread::spawn`) and joined on shutdown. Shutdown is driven by dropping the handle or closing the channel, not by a method callers must remember.
 - Atomics: `Ordering::Relaxed` for independent counters and flags. If you need a stronger ordering to make two atomics agree, combine them into one value.
 
 ## 6. The real-time audio callback
@@ -90,7 +96,9 @@ Use `#[expect(lint, reason = "…")]` on the smallest item that needs it. `#[all
 
 ## 11. Dependencies
 
-Add one only when code needs it, with `cargo add`, then move the version into `[workspace.dependencies]`. Before adding: is it maintained, is its licence in `deny.toml`, does it duplicate something already in the tree, and could `std` do this? Prefer few features: `default-features = false` and enable what is used.
+Add one only when code needs it, with `cargo add`, then move the version into `[workspace.dependencies]`. Before adding: is it maintained, is its licence in `deny.toml`, does it duplicate something already in the tree, and could `std` do this? Declare it with `default-features = false` and list the features the code uses (`cargo xtask check-deps` enforces it). If it or anything it pulls in has a build script, `cargo-deny` asks for it to be named in `deny.toml`'s `allow-build-scripts`: read that build script first.
+
+Change the lockfile with `cargo update --precise <crate>@<version>`, never a bare `cargo update`, and only to versions at least seven days old (the `crate cooldown` CI job checks).
 
 ## 12. Comments
 
