@@ -1,7 +1,9 @@
 [global]
-line-length = 100
+line-length = 0
 
 [MD013]
-line-length = 100
+line-length = 0
+reflow      = true
+reflow-mode = "normalize"
 tables      = false
 code-blocks = false

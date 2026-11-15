@@ -1,7 +1,6 @@
 # aeri — Testing and verification
 
-How aeri earns confidence in its code. Every tool here runs from `prek.toml`, locally
-and in CI, so there is one definition of each check.
+How aeri earns confidence in its code. Every tool here runs from `prek.toml`, locally and in CI, so there is one definition of each check.
 
 ## The toolchain, for someone who knows Python's
 
@@ -23,9 +22,7 @@ and in CI, so there is one definition of each check.
 | Feature matrix | tox | `cargo-hack` | Every combination of cargo features compiles |
 | Spelling | codespell | `typos` | |
 
-The last three rows of "verification" have no everyday Python counterpart, and they
-matter most here: aeri has `unsafe` FFI and a lock-free bridge to a real-time thread,
-which are exactly the things ordinary tests cannot see into.
+The last three rows of "verification" have no everyday Python counterpart, and they matter most here: aeri has `unsafe` FFI and a lock-free bridge to a real-time thread, which are exactly the things ordinary tests cannot see into.
 
 ## What runs when
 
@@ -54,29 +51,19 @@ Install the tools once with `cargo xtask install-tools`.
 
 ## Standards
 
-- **Mutation testing is the measure of test quality, not coverage.** Coverage says a
-  line ran; a surviving mutant says no test would notice if that line were wrong.
-  Every mutant in changed code must be caught, or explicitly justified in
-  `.cargo/mutants.toml` with a reason.
-- **Coverage is a floor, not a target.** The gate is 85% of lines. Do not write tests
-  to move the number; write them to pin behaviour, and let the number follow.
-- **No flaky tests.** No retries, no sleeps as synchronisation, no dependence on test
-  order or wall-clock time. A test that fails one run in a hundred is failing.
+- **Mutation testing is the measure of test quality, not coverage.** Coverage says a line ran; a surviving mutant says no test would notice if that line were wrong. Every mutant in changed code must be caught, or explicitly justified in `.cargo/mutants.toml` with a reason.
+- **Coverage is a floor, not a target.** The gate is 85% of lines. Do not write tests to move the number; write them to pin behaviour, and let the number follow.
+- **No flaky tests.** No retries, no sleeps as synchronisation, no dependence on test order or wall-clock time. A test that fails one run in a hundred is failing.
 - **A bug fix starts with a failing test** that reproduces it.
-- **Property tests commit their regressions.** `proptest` writes failing cases to
-  `proptest-regressions/`; those files are checked in.
-- **Tests that cannot run under Miri** (FFI, real I/O) are marked
-  `#[cfg_attr(miri, ignore)]` with a comment saying why. Everything else runs.
-- **Fixtures are small, committed, and reproducible:** the generating command sits in a
-  `README.md` beside them.
+- **Property tests commit their regressions.** `proptest` writes failing cases to `proptest-regressions/`; those files are checked in.
+- **Tests that cannot run under Miri** (FFI, real I/O) are marked `#[cfg_attr(miri, ignore)]` with a comment saying why. Everything else runs.
+- **Fixtures are small, committed, and reproducible:** the generating command sits in a `README.md` beside them.
 
 ## Not yet in place
 
 Recorded here so the gap is visible rather than assumed away.
 
-- **Fuzzing and `loom`** have no code to act on yet. They are required by the design
-  brief at the step that introduces a decoder and the real-time bridge, and CI gains a
-  job for each then.
+- **Fuzzing and `loom`** have no code to act on yet. They are required by the design brief at the step that introduces a decoder and the real-time bridge, and CI gains a job for each then.
 - **Benchmarks** arrive with the DSP chain in Phase 4.
 - **Device sinks on Linux** cannot be exercised in CI and need a real machine.
 - **Coverage on macOS-only code** is not measured: the coverage job runs on Linux.

@@ -1,10 +1,6 @@
 # Design brief — Phases 2 and 3: first audio
 
-This is the specification for taking aeri from empty crates to
-`aeri play file.flac` producing sound. It is written to be executed step by step.
-Where it gives a type or trait, build that shape; where code and brief disagree after
-you have tried it, stop and raise it (see "When to stop and ask") rather than quietly
-diverging.
+This is the specification for taking aeri from empty crates to `aeri play file.flac` producing sound. It is written to be executed step by step. Where it gives a type or trait, build that shape; where code and brief disagree after you have tried it, stop and raise it (see "When to stop and ask") rather than quietly diverging.
 
 Read first: [`ARCHITECTURE.md`](../ARCHITECTURE.md), [`RUST_STYLE.md`](../RUST_STYLE.md),
 [`TESTING.md`](../TESTING.md),
@@ -21,30 +17,18 @@ ADRs [0003](../adr/0003-native-output-backends.md),
 cargo run -p aeri-cli -- play tests/fixtures/sine.flac
 ```
 
-plays the file through the default output device, prints position as it goes, stops
-cleanly on Ctrl-C or end of track, and exits 0. Every step below lands with its tests,
-and `prek run --all-files` plus `prek run --all-files --stage pre-push` stay green.
+plays the file through the default output device, prints position as it goes, stops cleanly on Ctrl-C or end of track, and exits 0. Every step below lands with its tests, and `prek run --all-files` plus `prek run --all-files --stage pre-push` stay green.
 
 ## Rules for this work
 
-- **Signatures here are shapes, not gospel.** The `OutputSink` and `Decoder` traits
-  and the core types other than `PlaybackState` were compile-checked under the
-  workspace lint set on Rust 1.100. `PlaybackState`, the `Engine` API, and every
-  method body were not. If the compiler or clippy objects, fix the signature in the
-  idiomatic direction and keep the intent.
-- **Verify every external API before using it.** symphonia 0.6, rtrb, coreaudio-rs,
-  pipewire, and tokio all move. Read the docs for the version `cargo add` resolves
-  (`cargo doc --open -p <crate>` or docs.rs); do not write calls from memory.
-- **Add each dependency with the first line of code that uses it** (`cargo add`, then
-  move the version into `[workspace.dependencies]`). `cargo-machete` rejects unused
-  ones; `cargo-deny` rejects new licences until `deny.toml` is updated deliberately.
+- **Signatures here are shapes, not gospel.** The `OutputSink` and `Decoder` traits and the core types other than `PlaybackState` were compile-checked under the workspace lint set on Rust 1.100. `PlaybackState`, the `Engine` API, and every method body were not. If the compiler or clippy objects, fix the signature in the idiomatic direction and keep the intent.
+- **Verify every external API before using it.** symphonia 0.6, rtrb, coreaudio-rs, pipewire, and tokio all move. Read the docs for the version `cargo add` resolves (`cargo doc --open -p <crate>` or docs.rs); do not write calls from memory.
+- **Add each dependency with the first line of code that uses it** (`cargo add`, then move the version into `[workspace.dependencies]`). `cargo-machete` rejects unused ones; `cargo-deny` rejects new licences until `deny.toml` is updated deliberately.
 - **One step per commit**, on a `phase-3` branch.
 
 ## Step 1 — `aeri-core`: playback types
 
-No dependencies on other workspace crates. No `serde` yet (nothing is persisted until
-the library phase). Everything derives `Debug`; value types also derive
-`Clone, PartialEq, Eq, Hash` where that is truthful.
+No dependencies on other workspace crates. No `serde` yet (nothing is persisted until the library phase). Everything derives `Debug`; value types also derive `Clone, PartialEq, Eq, Hash` where that is truthful.
 
 ```rust
 /// Sample rate in Hz. Never zero.
@@ -102,35 +86,24 @@ pub enum PlaybackState {
 }
 ```
 
-There is no queue or playlist type here. The engine knows a current track and a next
-slot (ADR 0005); playlists arrive with `aeri-player` in Phase 4.
+There is no queue or playlist type here. The engine knows a current track and a next slot (ADR 0005); playlists arrive with `aeri-player` in Phase 4.
 
 Idiom notes:
 
-- **Newtypes with private fields** (`SampleRate`, `Channels`) put validation in one
-  constructor (`SampleRate::new(u32) -> Option<Self>`, plus `TryFrom<u32>`), so no other
-  code re-checks for zero. Provide `get()` accessors.
+- **Newtypes with private fields** (`SampleRate`, `Channels`) put validation in one constructor (`SampleRate::new(u32) -> Option<Self>`, plus `TryFrom<u32>`), so no other code re-checks for zero. Provide `get()` accessors.
 - **`Duration` for time**, not `f64` seconds or raw frame counts, at every API boundary.
-- **`Arc<Track>`** because a track is shared between the engine, the state snapshot,
-  and subscribers; cloning the `Arc` is a pointer copy.
-- **`#[non_exhaustive]`** on enums that will grow, so adding a variant later is not a
-  breaking change for downstream `match`es.
+- **`Arc<Track>`** because a track is shared between the engine, the state snapshot, and subscribers; cloning the `Arc` is a pointer copy.
+- **`#[non_exhaustive]`** on enums that will grow, so adding a variant later is not a breaking change for downstream `match`es.
 
 Done when:
 
-- unit tests show the `SampleRate` and `Channels` constructors reject zero and
-  round-trip every other value through `get()` and `TryFrom`;
-- `prek run mutants --stage manual --all-files` leaves no surviving mutant in
-  `aeri-core`;
-- `--no-tests=pass` is removed from the `cargo-nextest` and `coverage` hooks in
-  `prek.toml`. It exists only because the crates are empty; from this step on, a run
-  that finds no tests is a failure.
+- unit tests show the `SampleRate` and `Channels` constructors reject zero and round-trip every other value through `get()` and `TryFrom`;
+- `prek run mutants --stage manual --all-files` leaves no surviving mutant in `aeri-core`;
+- `--no-tests=pass` is removed from the `cargo-nextest` and `coverage` hooks in `prek.toml`. It exists only because the crates are empty; from this step on, a run that finds no tests is a failure.
 
 ## Step 2 — `aeri-audio`: `OutputSink` and `FakeSink`
 
-Depends on `aeri-core`. The trait is push-style and block-oriented: the engine pushes
-interleaved `f32` blocks; a device sink hides its ring buffer and real-time callback
-behind it. That keeps `rtrb` out of the public API and lets a test sink be a `Vec`.
+Depends on `aeri-core`. The trait is push-style and block-oriented: the engine pushes interleaved `f32` blocks; a device sink hides its ring buffer and real-time callback behind it. That keeps `rtrb` out of the public API and lets a test sink be a `Vec`.
 
 ```rust
 pub trait OutputSink: Send {
@@ -157,23 +130,15 @@ pub trait OutputSink: Send {
 }
 ```
 
-`SinkError` is a `thiserror` enum, `#[non_exhaustive]`, with variants for the failures
-a caller can act on differently (no device, format refused, device lost) and the
-platform error kept as `#[source]`.
+`SinkError` is a `thiserror` enum, `#[non_exhaustive]`, with variants for the failures a caller can act on differently (no device, format refused, device lost) and the platform error kept as `#[source]`.
 
-`FakeSink` implements the trait by recording into memory, with knobs for tests: a
-capacity (to exercise back-pressure), a spec to "negotiate" (to exercise the mismatch
-path), and a log of calls (`configure`, `flush`) so tests can assert on re-inits. It
-lives in `aeri-audio` behind a `test-util` cargo feature so `aeri-engine`'s tests can
-enable it as a dev-dependency without shipping it.
+`FakeSink` implements the trait by recording into memory, with knobs for tests: a capacity (to exercise back-pressure), a spec to "negotiate" (to exercise the mismatch path), and a log of calls (`configure`, `flush`) so tests can assert on re-inits. It lives in `aeri-audio` behind a `test-util` cargo feature so `aeri-engine`'s tests can enable it as a dev-dependency without shipping it.
 
-Done when: `FakeSink` has tests for back-pressure (partial acceptance, whole frames
-only), pause, flush, and `frames_played`.
+Done when: `FakeSink` has tests for back-pressure (partial acceptance, whole frames only), pause, flush, and `frames_played`.
 
 ## Step 3 — `aeri-decode`: `Decoder` over symphonia
 
-Depends on `aeri-core`. symphonia stays a private implementation detail: no symphonia
-type appears in a public signature.
+Depends on `aeri-core`. symphonia stays a private implementation detail: no symphonia type appears in a public signature.
 
 ```rust
 pub trait Decoder: Send {
@@ -193,31 +158,20 @@ pub trait Decoder: Send {
 pub fn open(source: &Source) -> Result<Box<dyn Decoder>, DecodeError>;
 ```
 
-`DecodeError` distinguishes at least: I/O failure, unsupported or unrecognised format,
-and corrupt data — and corrupt *packets* mid-stream are skipped with a `tracing::warn!`,
-not surfaced as fatal, because one bad frame should not end a track.
+`DecodeError` distinguishes at least: I/O failure, unsupported or unrecognised format, and corrupt data — and corrupt *packets* mid-stream are skipped with a `tracing::warn!`, not surfaced as fatal, because one bad frame should not end a track.
 
 Formats: FLAC and MP3, and only those symphonia features (ADR 0007).
 
-Fixtures: commit a one-second 440 Hz stereo 44.1 kHz `sine.flac` and `sine.mp3` under
-`crates/aeri-decode/tests/fixtures/` (each far below the 256 KiB hook limit), plus the
-command that generated them in a `README.md` beside them.
+Fixtures: commit a one-second 440 Hz stereo 44.1 kHz `sine.flac` and `sine.mp3` under `crates/aeri-decode/tests/fixtures/` (each far below the 256 KiB hook limit), plus the command that generated them in a `README.md` beside them.
 
 Done when:
 
-- integration tests decode each fixture and assert the spec, a total frame count
-  within codec padding of 44 100, non-silent output, and a seek to 0.5 s that lands at
-  or before it;
-- a `cargo-fuzz` target feeds arbitrary bytes to `open` + `next_block` and has run for
-  at least ten minutes locally with no panic, hang, or unbounded allocation. Commit the
-  target under `fuzz/` and any crashing inputs it finds as regression fixtures. This
-  needs a nightly toolchain and a CI job (short run per pull request); both are new
-  tooling, so raise it with the user when you reach this step.
+- integration tests decode each fixture and assert the spec, a total frame count within codec padding of 44 100, non-silent output, and a seek to 0.5 s that lands at or before it;
+- a `cargo-fuzz` target feeds arbitrary bytes to `open` + `next_block` and has run for at least ten minutes locally with no panic, hang, or unbounded allocation. Commit the target under `fuzz/` and any crashing inputs it finds as regression fixtures. This needs a nightly toolchain and a CI job (short run per pull request); both are new tooling, so raise it with the user when you reach this step.
 
 ## Step 4 — `aeri-audio`: a real device sink
 
-Write the sink for the platform you are developing on first (`CoreAudioSink` on macOS),
-behind `cfg(target_os)`. The other platform's sink is its own step and its own commit.
+Write the sink for the platform you are developing on first (`CoreAudioSink` on macOS), behind `cfg(target_os)`. The other platform's sink is its own step and its own commit.
 
 This is the first `unsafe` in the project. Opt in once at the crate root:
 
@@ -227,43 +181,26 @@ This is the first `unsafe` in the project. Opt in once at the crate root:
 
 The real-time callback is the most constrained code in aeri. Inside it:
 
-- **No allocation, no deallocation.** No `Vec::push`, `Box`, `String`, `format!`,
-  `Arc::clone` whose drop could free, or `tracing` macros.
+- **No allocation, no deallocation.** No `Vec::push`, `Box`, `String`, `format!`, `Arc::clone` whose drop could free, or `tracing` macros.
 - **No locks.** No `Mutex`, `RwLock`, channel send/recv, or `OnceLock` initialisation.
 - **No syscalls** beyond what the audio API itself performs. No I/O, no `thread::park`.
-- **No panics.** No indexing that can go out of bounds, no `unwrap`/`expect`, no
-  arithmetic that can overflow in debug. A panic across FFI is undefined behaviour.
-- **Inputs are exactly:** the `rtrb` consumer, and atomics (`paused`, a flush
-  generation, the `frames_played` counter). Underrun writes silence and bumps an atomic
-  counter that a normal thread logs later.
+- **No panics.** No indexing that can go out of bounds, no `unwrap`/`expect`, no arithmetic that can overflow in debug. A panic across FFI is undefined behaviour.
+- **Inputs are exactly:** the `rtrb` consumer, and atomics (`paused`, a flush generation, the `frames_played` counter). Underrun writes silence and bumps an atomic counter that a normal thread logs later.
 
-Use `Ordering::Relaxed` for independent counters and flags; if you find yourself
-needing a stronger ordering to make two atomics agree, the design is wrong — put both
-facts in one atomic.
+Use `Ordering::Relaxed` for independent counters and flags; if you find yourself needing a stronger ordering to make two atomics agree, the design is wrong — put both facts in one atomic.
 
-Test the callback body as a plain function over a slice, off the audio thread, and run
-it under an allocation guard (the `assert_no_alloc` crate, as a dev-dependency — check
-it is still maintained first) so an accidental allocation fails a test, not a listening
-session.
+Test the callback body as a plain function over a slice, off the audio thread, and run it under an allocation guard (the `assert_no_alloc` crate, as a dev-dependency — check it is still maintained first) so an accidental allocation fails a test, not a listening session.
 
 Done when:
 
 - a manual run plays a sine through the speakers with no audible glitches;
-- the callback function has unit tests for normal fill, underrun, pause, and flush,
-  run under the allocation guard;
-- those tests pass under Miri (`prek run miri --stage manual --all-files`); tests that
-  call the platform API are marked `#[cfg_attr(miri, ignore)]` with the reason;
-- the hand-off between producer and callback (ring buffer plus the pause and flush
-  atomics) has a `loom` model test showing that no interleaving plays stale samples
-  after a flush or loses frames across a pause. `loom` is a dev-dependency behind
-  `cfg(loom)`; adding its CI job is new tooling, so raise it with the user.
+- the callback function has unit tests for normal fill, underrun, pause, and flush, run under the allocation guard;
+- those tests pass under Miri (`prek run miri --stage manual --all-files`); tests that call the platform API are marked `#[cfg_attr(miri, ignore)]` with the reason;
+- the hand-off between producer and callback (ring buffer plus the pause and flush atomics) has a `loom` model test showing that no interleaving plays stale samples after a flush or loses frames across a pause. `loom` is a dev-dependency behind `cfg(loom)`; adding its CI job is new tooling, so raise it with the user.
 
 ## Step 5 — `aeri-engine`: the playback actor
 
-Depends on `aeri-core`, `aeri-audio`, `aeri-decode`. The engine is an **actor**
-(ADR 0004): one thread owns all playback state; everything else talks to it through a
-handle. There is no `Mutex<EngineState>` anywhere. It knows two tracks, the current one
-and an optional next (ADR 0005), and nothing about playlists.
+Depends on `aeri-core`, `aeri-audio`, `aeri-decode`. The engine is an **actor** (ADR 0004): one thread owns all playback state; everything else talks to it through a handle. There is no `Mutex<EngineState>` anywhere. It knows two tracks, the current one and an optional next (ADR 0005), and nothing about playlists.
 
 ```rust
 /// A cheap, cloneable handle to the playback thread.
@@ -293,72 +230,39 @@ impl Engine {
 
 Inside:
 
-- **Commands** travel on a `tokio::sync::mpsc` channel as a private `enum Command`, each
-  variant carrying a `tokio::sync::oneshot::Sender` for its reply. The async methods
-  above send and await the reply. These tokio primitives do not need a runtime on the
-  receiving side: the playback thread is a plain named `std::thread` and uses
-  `blocking_recv` when idle and `try_recv` between blocks while playing.
-- **State** is published through a `tokio::sync::watch` channel. Only the playback
-  thread writes it. Publish on every transition, and position at most ~10×/second.
-- **The loop** while playing: drain pending commands → get a block from the decoder →
-  `sink.write` until accepted, sleeping a few milliseconds when the sink is full
-  (do not build a wake-up from the real-time callback) → update position from
-  `sink.frames_played()`.
-- **Gapless:** when the current decoder returns `Ok(None)`, take the next slot. Empty
-  → drain and stop. Equal `StreamSpec` → keep writing into the same sink with no
-  `configure` and no flush. Different spec → wait for `is_drained`, then `configure`.
-  This is ADR 0003's rule and the tests below pin it.
-- **No "took the next track" event yet.** ADR 0005's event has no consumer until
-  `aeri-player` exists, so it is built in Phase 4. Here the change is visible only as
-  a new `track` in the published state.
-- **Shutdown:** when the last `Engine` handle drops, the command channel closes; the
-  thread sees that, stops the sink, and exits. No explicit "shutdown" call that a
-  caller could forget.
-- **Errors after a command was accepted** (a file that fails mid-decode) are logged
-  with `tracing::error!`, the track is skipped, and the state moves on. The engine
-  never panics on bad input.
+- **Commands** travel on a `tokio::sync::mpsc` channel as a private `enum Command`, each variant carrying a `tokio::sync::oneshot::Sender` for its reply. The async methods above send and await the reply. These tokio primitives do not need a runtime on the receiving side: the playback thread is a plain named `std::thread` and uses `blocking_recv` when idle and `try_recv` between blocks while playing.
+- **State** is published through a `tokio::sync::watch` channel. Only the playback thread writes it. Publish on every transition, and position at most ~10×/second.
+- **The loop** while playing: drain pending commands → get a block from the decoder → `sink.write` until accepted, sleeping a few milliseconds when the sink is full (do not build a wake-up from the real-time callback) → update position from `sink.frames_played()`.
+- **Gapless:** when the current decoder returns `Ok(None)`, take the next slot. Empty → drain and stop. Equal `StreamSpec` → keep writing into the same sink with no `configure` and no flush. Different spec → wait for `is_drained`, then `configure`. This is ADR 0003's rule and the tests below pin it.
+- **No "took the next track" event yet.** ADR 0005's event has no consumer until `aeri-player` exists, so it is built in Phase 4. Here the change is visible only as a new `track` in the published state.
+- **Shutdown:** when the last `Engine` handle drops, the command channel closes; the thread sees that, stops the sink, and exits. No explicit "shutdown" call that a caller could forget.
+- **Errors after a command was accepted** (a file that fails mid-decode) are logged with `tracing::error!`, the track is skipped, and the state moves on. The engine never panics on bad input.
 
-`Box<dyn OutputSink>` rather than `Engine<S: OutputSink>`: the sink is called once per
-block, so dynamic dispatch costs nothing measurable, and a non-generic `Engine` keeps
-everything above it non-generic too.
+`Box<dyn OutputSink>` rather than `Engine<S: OutputSink>`: the sink is called once per block, so dynamic dispatch costs nothing measurable, and a non-generic `Engine` keeps everything above it non-generic too.
 
-`with_default_output` exists so that a frontend never names `aeri-audio`: only the
-engine may depend on it (`deny.toml`).
+`with_default_output` exists so that a frontend never names `aeri-audio`: only the engine may depend on it (`deny.toml`).
 
 Done when these integration tests pass against `FakeSink`:
 
-1. Play one fixture → the sink received exactly the decoded frame count, not silence;
-   observed states go `Buffering → Playing → Stopped`.
+1. Play one fixture → the sink received exactly the decoded frame count, not silence; observed states go `Buffering → Playing → Stopped`.
 2. Pause → `frames_played` stops advancing; resume → it continues; no frames lost.
 3. Seek to 0.5 s → sink was flushed once; total frames ≈ half the track.
-4. `play` then `set_next` with the same spec → exactly one `configure`, frames = sum
-   of both, and the state's `track` changes without passing through `Stopped`.
+4. `play` then `set_next` with the same spec → exactly one `configure`, frames = sum of both, and the state's `track` changes without passing through `Stopped`.
 5. `play` then `set_next` with a different spec → two `configure` calls, in order.
 6. A missing file → `play` returns `Err`, state stays `Stopped`.
-7. Negotiated spec differs from requested → `PlaybackState::Active.output` reports the
-   negotiated one.
-8. Dropping every `Engine` handle joins the thread (the test would hang otherwise; wrap
-   it in a timeout).
-9. `set_next(None)` after `set_next(Some(…))` → playback stops at the end of the
-   current track.
+7. Negotiated spec differs from requested → `PlaybackState::Active.output` reports the negotiated one.
+8. Dropping every `Engine` handle joins the thread (the test would hang otherwise; wrap it in a timeout).
+9. `set_next(None)` after `set_next(Some(…))` → playback stops at the end of the current track.
 
 ## Step 6 — `aeri-cli`: `aeri play <path>`
 
 - Argument parsing with `clap`'s derive API; a `Command` enum with one variant, `Play`.
-- `main` returns `anyhow::Result<()>`; a small `#[tokio::main(flavor = "current_thread")]`
-  runtime is enough.
-- Depend on `aeri-engine` and `aeri-core` only, and build the engine with
-  `Engine::with_default_output()`. Depending on the engine directly is a temporary
-  exception that ends when `aeri-player` is created in Phase 4 (ADR 0006).
-- Print progress from `subscribe()`; `tokio::select!` it against `tokio::signal::ctrl_c()`.
-  Exit when the state returns to `Stopped`.
-- User-facing output goes through one module that carries
-  `#![expect(clippy::print_stdout, reason = "CLI output is the product")]`. Diagnostics
-  go through `tracing`, initialised to stderr.
+- `main` returns `anyhow::Result<()>`; a small `#[tokio::main(flavor = "current_thread")]` runtime is enough.
+- Depend on `aeri-engine` and `aeri-core` only, and build the engine with `Engine::with_default_output()`. Depending on the engine directly is a temporary exception that ends when `aeri-player` is created in Phase 4 (ADR 0006).
+- Print progress from `subscribe()`; `tokio::select!` it against `tokio::signal::ctrl_c()`. Exit when the state returns to `Stopped`.
+- User-facing output goes through one module that carries `#![expect(clippy::print_stdout, reason = "CLI output is the product")]`. Diagnostics go through `tracing`, initialised to stderr.
 
-Done when: the outcome at the top of this document works by hand, and an integration
-test runs the binary against a missing path and asserts a non-zero exit and a readable
-error.
+Done when: the outcome at the top of this document works by hand, and an integration test runs the binary against a missing path and asserts a non-zero exit and a readable error.
 
 ## When to stop and ask
 
@@ -372,6 +276,4 @@ Stop and raise it with the user, do not improvise, when:
 
 ## Not in these phases
 
-DSP of any kind (including volume and ReplayGain), resampling, playlists, the queue,
-playback order, the `Player` handle, the library, scripting, MPRIS, and the GUI. If a
-step seems to need one of these, the step is being over-built.
+DSP of any kind (including volume and ReplayGain), resampling, playlists, the queue, playback order, the `Player` handle, the library, scripting, MPRIS, and the GUI. If a step seems to need one of these, the step is being over-built.

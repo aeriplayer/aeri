@@ -9,5 +9,4 @@ dist-manifest.json
 .claude/skills/*
 !.claude/skills/aeri-review/
 .vscode/
-# Added by code-review-graph
-.code-review-graph/
+CLAUDE.local.md
