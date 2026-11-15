@@ -1,3 +1,5 @@
+//! Generates the IPC message types and service stubs from `proto/`.
+
 use std::process::Command;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {

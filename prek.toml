@@ -22,12 +22,6 @@ default_stages             = ["pre-commit"]
 # Licence texts are kept byte-for-byte as published.
 exclude = '^LICENSE-'
 
-# Hook tools written in Rust are built with prek's own latest-stable toolchain,
-# not the one rust-toolchain.toml pins for aeri: a linter's minimum Rust version
-# must not force a toolchain bump on the project.
-[default_language_version]
-rust = ">=1.97"
-
 # Hooks run in ascending priority; hooks sharing a priority run concurrently.
 # Anything that rewrites files gets a priority of its own, because two fixers
 # touching one file at once is undefined. Cargo hooks are serialised too: they
@@ -44,8 +38,11 @@ fix-rust       = 7
 check          = 10
 clippy         = 20
 test           = 30
-doc            = 31
-deny           = 32
+doctest        = 31
+doc            = 32
+features       = 33
+deny           = 34
+manual         = 40
 
 # `prek update` pins to commit SHAs (a tag can be moved; a SHA cannot) and holds
 # back anything published in the last week, so a compromised release has time to
@@ -196,15 +193,29 @@ groups = ["target"]
 priority = "clippy"
 
 [[repos.hooks]]
-id             = "cargo-test"
-name           = "cargo test"
-language       = "system"
-entry          = "cargo test --workspace --all-features --locked"
+id       = "cargo-nextest"
+name     = "cargo nextest"
+language = "system"
+# nextest runs each test in its own process, kills hung tests, and never retries
+# (.config/nextest.toml). `--no-tests=pass` only matters while crates are empty.
+entry          = "cargo nextest run --workspace --all-features --locked --no-tests=pass"
 always_run     = true
 pass_filenames = false
 stages         = ["pre-push"]
 groups         = ["target"]
 priority       = "test"
+
+[[repos.hooks]]
+id       = "cargo-doctest"
+name     = "cargo test --doc"
+language = "system"
+# nextest does not run documentation examples; this does.
+entry          = "cargo test --doc --workspace --all-features --locked"
+always_run     = true
+pass_filenames = false
+stages         = ["pre-push"]
+groups         = ["target"]
+priority       = "doctest"
 
 [[repos.hooks]]
 id             = "cargo-doc"
@@ -217,6 +228,62 @@ pass_filenames = false
 stages         = ["pre-push"]
 groups         = ["target"]
 priority       = "doc"
+
+[[repos.hooks]]
+id       = "cargo-hack"
+name     = "cargo hack (feature powerset)"
+language = "system"
+# Every combination of cargo features must compile on its own, so a feature-gated
+# boundary such as aeri-ipc's `local` (ADR 0003) cannot rot unnoticed.
+entry          = "cargo hack check --workspace --feature-powerset --locked"
+always_run     = true
+pass_filenames = false
+stages         = ["pre-push"]
+groups         = ["target"]
+priority       = "features"
+
+# Manual-stage hooks: too slow for every push, run by CI on every pull request and
+# on demand with `prek run <id> --stage manual --all-files`. See docs/TESTING.md.
+
+[[repos.hooks]]
+id       = "coverage"
+name     = "coverage (cargo llvm-cov)"
+language = "system"
+# Excluded: build automation and build scripts. Everything else counts.
+entry          = "cargo llvm-cov nextest --workspace --all-features --locked --no-tests=pass --ignore-filename-regex '(^|/)(xtask/|build\\.rs$)' --fail-under-lines 85"
+always_run     = true
+pass_filenames = false
+stages         = ["manual"]
+priority       = "manual"
+
+[[repos.hooks]]
+id       = "mutants"
+name     = "mutation testing (cargo mutants)"
+language = "system"
+shell    = "sh"
+# Mutates only the lines that differ from the base branch, then requires the test
+# suite to notice every mutation. Configured in .cargo/mutants.toml.
+entry = """
+mkdir -p target
+git diff "${MUTANTS_BASE:-origin/main}"...HEAD > target/mutants.diff
+cargo mutants --in-diff target/mutants.diff --no-shuffle
+"""
+always_run = true
+pass_filenames = false
+stages = ["manual"]
+priority = "manual"
+
+[[repos.hooks]]
+id       = "miri"
+name     = "miri"
+language = "system"
+# Needs `rustup toolchain install nightly --component miri`. Tests that cannot
+# run under Miri (FFI, real I/O) opt out with `#[cfg_attr(miri, ignore)]`.
+entry          = "cargo +nightly miri test --workspace --all-features"
+always_run     = true
+pass_filenames = false
+stages         = ["manual"]
+priority       = "manual"
 
 [[repos]]
 repo = "https://github.com/bnjbvr/cargo-machete"

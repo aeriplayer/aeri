@@ -1,0 +1,58 @@
+name: Set up aeri
+description: >-
+  Everything a job needs before it can run hooks: protoc, the pinned Rust
+  toolchain, a cargo cache, prek, and (optionally) the cargo tools the hooks call.
+
+inputs:
+  tools:
+    description: Install the cargo subcommands listed in xtask (nextest, hack, llvm-cov, mutants)
+    required: false
+    default: "false"
+  cache-key:
+    description: Distinguishes caches of jobs that build differently
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Install protoc (Linux)
+      if: runner.os == 'Linux'
+      shell: bash
+      run: |
+        sudo apt-get update -q
+        sudo apt-get install -y --no-install-recommends protobuf-compiler
+
+    - name: Install protoc (macOS)
+      if: runner.os == 'macOS'
+      shell: bash
+      run: brew install protobuf
+
+    - name: Set up Rust toolchain
+      shell: bash
+      run: rustup toolchain install # reads rust-toolchain.toml
+
+    - name: Cache cargo registry
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: |
+          ~/.cargo/registry/index/
+          ~/.cargo/registry/cache/
+          ~/.cargo/git/db/
+        key: ${{ inputs.cache-key }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+        restore-keys: ${{ inputs.cache-key }}-cargo-
+
+    - uses: j178/prek-action@44924fe9ef4a6f88253c4b6b1bf11c689d3ce53d # v3.1.0
+      with:
+        install-only: true
+
+    # cargo-binstall fetches prebuilt binaries, so the pinned tool list in xtask
+    # installs in seconds instead of compiling for minutes.
+    - if: inputs.tools == 'true'
+      uses: taiki-e/install-action@4a76afe23f9e08d2d9550fb56e556444e8611d21 # v2.90.4
+      with:
+        tool: cargo-binstall
+
+    - name: Install cargo tools (versions pinned in xtask)
+      if: inputs.tools == 'true'
+      shell: bash
+      run: cargo xtask install-tools

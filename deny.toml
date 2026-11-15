@@ -22,6 +22,17 @@ multiple-versions    = "warn"
 wildcards            = "deny"
 allow-wildcard-paths = true
 
+# The crate graph in docs/ARCHITECTURE.md, enforced. A crate listed here may only
+# be depended on directly by its `wrappers`.
+#   - Frontends reach the engine through the `Player` trait in aeri-ipc, never
+#     directly.
+#   - Only the engine composes the audio and decode layers.
+deny = [
+    { crate = "aeri-engine", wrappers = ["aeri-ipc"] },
+    { crate = "aeri-audio", wrappers = ["aeri-engine"] },
+    { crate = "aeri-decode", wrappers = ["aeri-engine"] },
+]
+
 [sources]
 unknown-registry = "deny"
 unknown-git      = "deny"

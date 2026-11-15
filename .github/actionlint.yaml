@@ -1,0 +1,10 @@
+# actionlint configuration.
+
+paths:
+  .github/workflows/**/*.yml:
+    ignore:
+      # `uses: $/path` is GitHub's self-repository syntax (changelog 2026-07-30,
+      # runner 2.336.0+), which zizmor requires in place of `./path`. actionlint
+      # 1.7.12 predates it and reports the missing `@ref`. Remove this entry when
+      # an actionlint release accepts the syntax.
+      - 'specifying action "\$/[^"]+" in invalid format because ref is missing'
