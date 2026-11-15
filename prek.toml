@@ -137,7 +137,6 @@ files = { glob = [
     "**/*.rs",
     "**/Cargo.toml",
     "Cargo.lock",
-    "proto/**",
     "rust-toolchain.toml",
     ".cargo/**",
 ] }

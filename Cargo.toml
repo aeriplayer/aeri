@@ -4,7 +4,6 @@ members = [
     "crates/aeri-audio",
     "crates/aeri-decode",
     "crates/aeri-engine",
-    "crates/aeri-ipc",
     "crates/aeri-cli",
     "xtask",
 ]
@@ -20,11 +19,6 @@ rust-version = "1.100"
 publish      = false
 
 [workspace.dependencies]
-# Keep these two on the same minor: connectrpc-build generates code against one
-# specific buffa minor, and a mismatch produces types that do not fit together.
-connectrpc-build = "0.9"
-buffa-build      = "0.9"
-
 anyhow = "1.0.104"
 
 # Rationale for each group: docs/TOOLING.md.

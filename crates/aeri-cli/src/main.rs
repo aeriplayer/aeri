@@ -1,3 +1,3 @@
-//! The `aeri` command-line client and daemon.
+//! The `aeri` command-line player.
 
 fn main() {}

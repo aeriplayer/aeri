@@ -1,6 +1,0 @@
-syntax = "proto3";
-
-package aeri.v1;
-
-// Empty until Phase 4: docs/adr/0002-defer-wire-protocol.md.
-service PlayerService {}

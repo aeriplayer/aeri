@@ -8,10 +8,12 @@ diverging.
 
 Read first: [`ARCHITECTURE.md`](../ARCHITECTURE.md), [`RUST_STYLE.md`](../RUST_STYLE.md),
 [`TESTING.md`](../TESTING.md),
-ADRs [0001](../adr/0001-multi-client-daemon.md),
-[0002](../adr/0002-defer-wire-protocol.md), [0003](../adr/0003-ipc-local-feature.md),
-[0004](../adr/0004-native-output-backends.md), [0009](../adr/0009-defer-metadata-schema.md),
-[0010](../adr/0010-engine-is-an-actor.md).
+ADRs [0003](../adr/0003-native-output-backends.md),
+[0004](../adr/0004-engine-is-an-actor.md),
+[0005](../adr/0005-engine-plays-current-and-next.md),
+[0006](../adr/0006-frontends-use-the-player-handle.md),
+[0007](../adr/0007-symphonia-flac-mp3-first.md),
+[0009](../adr/0009-open-tag-metadata.md).
 
 ## Outcome
 
@@ -25,10 +27,11 @@ and `prek run --all-files` plus `prek run --all-files --stage pre-push` stay gre
 
 ## Rules for this work
 
-- **Signatures here are shapes, not gospel.** The core types and the `OutputSink`,
-  `Decoder`, and `Player` traits were compile-checked under the workspace lint set on
-  Rust 1.100; the `Engine` API and every method body were not. If the compiler or clippy
-  objects, fix the signature in the idiomatic direction and keep the intent.
+- **Signatures here are shapes, not gospel.** The `OutputSink` and `Decoder` traits
+  and the core types other than `PlaybackState` were compile-checked under the
+  workspace lint set on Rust 1.100. `PlaybackState`, the `Engine` API, and every
+  method body were not. If the compiler or clippy objects, fix the signature in the
+  idiomatic direction and keep the intent.
 - **Verify every external API before using it.** symphonia 0.6, rtrb, coreaudio-rs,
   pipewire, and tokio all move. Read the docs for the version `cargo add` resolves
   (`cargo doc --open -p <crate>` or docs.rs); do not write calls from memory.
@@ -39,8 +42,8 @@ and `prek run --all-files` plus `prek run --all-files --stage pre-push` stay gre
 
 ## Step 1 — `aeri-core`: playback types
 
-No dependencies on other workspace crates. No `serde` yet (there is no wire format
-until Phase 4). Everything derives `Debug`; value types also derive
+No dependencies on other workspace crates. No `serde` yet (nothing is persisted until
+the library phase). Everything derives `Debug`; value types also derive
 `Clone, PartialEq, Eq, Hash` where that is truthful.
 
 ```rust
@@ -66,7 +69,7 @@ pub enum Source {
     File(PathBuf),
 }
 
-/// The minimal track (ADR 0009). The full metadata schema is Phase 4.
+/// The minimal track (ADR 0009). The full metadata type arrives with the library.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Track {
     pub source: Source,
@@ -74,17 +77,6 @@ pub struct Track {
     pub title: Option<String>,
     pub artist: Option<String>,
     pub album: Option<String>,
-}
-
-/// Stable identity of one queue entry. Clients name entries by id, never by index:
-/// with several clients (ADR 0001) an index is stale the moment another client edits.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct QueueItemId(u64);
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct QueueItem {
-    pub id: QueueItemId,
-    pub track: Arc<Track>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -101,20 +93,17 @@ pub enum Transport {
 pub enum PlaybackState {
     Stopped,
     Active {
-        item: QueueItem,
+        track: Arc<Track>,
         transport: Transport,
         position: Duration,
-        /// The spec the output actually negotiated (ADR 0004). `None` until known.
+        /// The spec the output actually negotiated (ADR 0003). `None` until known.
         output: Option<StreamSpec>,
     },
 }
 ```
 
-`Queue` owns `Vec<QueueItem>` plus `current: Option<usize>` behind private fields, and
-its methods keep one invariant: `current`, when `Some`, indexes a live item.
-Operations: `push(Arc<Track>) -> QueueItemId`, `remove(QueueItemId) -> Result<…>`,
-`current()`, `peek_next()` (needed for gapless pre-roll), `advance()`, `clear()`,
-`items() -> &[QueueItem]`. Ids come from a private counter and are never reused.
+There is no queue or playlist type here. The engine knows a current track and a next
+slot (ADR 0005); playlists arrive with `aeri-player` in Phase 4.
 
 Idiom notes:
 
@@ -122,20 +111,15 @@ Idiom notes:
   constructor (`SampleRate::new(u32) -> Option<Self>`, plus `TryFrom<u32>`), so no other
   code re-checks for zero. Provide `get()` accessors.
 - **`Duration` for time**, not `f64` seconds or raw frame counts, at every API boundary.
-- **`Arc<Track>`** because a track is shared between the queue, the state snapshot, and
-  subscribers; cloning the `Arc` is a pointer copy.
+- **`Arc<Track>`** because a track is shared between the engine, the state snapshot,
+  and subscribers; cloning the `Arc` is a pointer copy.
 - **`#[non_exhaustive]`** on enums that will grow, so adding a variant later is not a
   breaking change for downstream `match`es.
 
 Done when:
 
-- unit tests cover the `Queue` invariant under every operation (removing the current
-  item, the last item, an unknown id; advancing past the end), and the `SampleRate` /
-  `Channels` constructors reject zero;
-- a `proptest` property applies an arbitrary sequence of queue operations and asserts
-  after each one that the invariant holds, that ids are unique, and that `items()`
-  matches a simple model (a `Vec` updated by the same operations). This is the
-  hypothesis-style test: it finds the operation order nobody thought to write down;
+- unit tests show the `SampleRate` and `Channels` constructors reject zero and
+  round-trip every other value through `get()` and `TryFrom`;
 - `prek run mutants --stage manual --all-files` leaves no surviving mutant in
   `aeri-core`;
 - `--no-tests=pass` is removed from the `cargo-nextest` and `coverage` hooks in
@@ -151,7 +135,7 @@ behind it. That keeps `rtrb` out of the public API and lets a test sink be a `Ve
 ```rust
 pub trait OutputSink: Send {
     /// Opens (or re-opens) the output for `requested` and returns the spec actually
-    /// negotiated. The two differ when the device or server declines (ADR 0004).
+    /// negotiated. The two differ when the device or server declines (ADR 0003).
     fn configure(&mut self, requested: StreamSpec) -> Result<StreamSpec, SinkError>;
 
     /// Offers interleaved samples. Never blocks. Returns how many whole *frames* were
@@ -213,8 +197,7 @@ pub fn open(source: &Source) -> Result<Box<dyn Decoder>, DecodeError>;
 and corrupt data — and corrupt *packets* mid-stream are skipped with a `tracing::warn!`,
 not surfaced as fatal, because one bad frame should not end a track.
 
-Formats in this step: FLAC and MP3 (enable only those symphonia features; the rest of
-the ADR 0008 floor arrives in Phase 5).
+Formats: FLAC and MP3, and only those symphonia features (ADR 0007).
 
 Fixtures: commit a one-second 440 Hz stereo 44.1 kHz `sine.flac` and `sine.mp3` under
 `crates/aeri-decode/tests/fixtures/` (each far below the 256 KiB hook limit), plus the
@@ -278,8 +261,9 @@ Done when:
 ## Step 5 — `aeri-engine`: the playback actor
 
 Depends on `aeri-core`, `aeri-audio`, `aeri-decode`. The engine is an **actor**
-(ADR 0010): one thread owns all playback state; everything else talks to it through a
-handle. There is no `Mutex<EngineState>` anywhere.
+(ADR 0004): one thread owns all playback state; everything else talks to it through a
+handle. There is no `Mutex<EngineState>` anywhere. It knows two tracks, the current one
+and an optional next (ADR 0005), and nothing about playlists.
 
 ```rust
 /// A cheap, cloneable handle to the playback thread.
@@ -290,8 +274,13 @@ impl Engine {
     /// Starts the playback thread, which takes ownership of `sink`.
     pub fn spawn(sink: Box<dyn OutputSink>) -> Result<Self, EngineError>;
 
-    pub async fn play(&self, track: Track) -> Result<QueueItemId, EngineError>;
-    pub async fn enqueue(&self, track: Track) -> Result<QueueItemId, EngineError>;
+    /// Starts the playback thread on this platform's default output device.
+    pub fn with_default_output() -> Result<Self, EngineError>;
+
+    /// Plays `track` now, replacing the current track and clearing the next slot.
+    pub async fn play(&self, track: Arc<Track>) -> Result<(), EngineError>;
+    /// Fills or clears the slot the engine takes when the current track ends.
+    pub async fn set_next(&self, track: Option<Arc<Track>>) -> Result<(), EngineError>;
     pub async fn pause(&self) -> Result<(), EngineError>;
     pub async fn resume(&self) -> Result<(), EngineError>;
     pub async fn stop(&self) -> Result<(), EngineError>;
@@ -315,10 +304,13 @@ Inside:
   `sink.write` until accepted, sleeping a few milliseconds when the sink is full
   (do not build a wake-up from the real-time callback) → update position from
   `sink.frames_played()`.
-- **Gapless:** when the current decoder returns `Ok(None)`, open `queue.peek_next()`.
-  Equal `StreamSpec` → keep writing into the same sink with no `configure` and no
-  flush. Different spec → wait for `is_drained`, then `configure`. This is ADR 0004's
-  rule and the tests below pin it.
+- **Gapless:** when the current decoder returns `Ok(None)`, take the next slot. Empty
+  → drain and stop. Equal `StreamSpec` → keep writing into the same sink with no
+  `configure` and no flush. Different spec → wait for `is_drained`, then `configure`.
+  This is ADR 0003's rule and the tests below pin it.
+- **No "took the next track" event yet.** ADR 0005's event has no consumer until
+  `aeri-player` exists, so it is built in Phase 4. Here the change is visible only as
+  a new `track` in the published state.
 - **Shutdown:** when the last `Engine` handle drops, the command channel closes; the
   thread sees that, stops the sink, and exits. No explicit "shutdown" call that a
   caller could forget.
@@ -328,7 +320,10 @@ Inside:
 
 `Box<dyn OutputSink>` rather than `Engine<S: OutputSink>`: the sink is called once per
 block, so dynamic dispatch costs nothing measurable, and a non-generic `Engine` keeps
-`LocalPlayer` and everything above it non-generic too.
+everything above it non-generic too.
+
+`with_default_output` exists so that a frontend never names `aeri-audio`: only the
+engine may depend on it (`deny.toml`).
 
 Done when these integration tests pass against `FakeSink`:
 
@@ -336,58 +331,25 @@ Done when these integration tests pass against `FakeSink`:
    observed states go `Buffering → Playing → Stopped`.
 2. Pause → `frames_played` stops advancing; resume → it continues; no frames lost.
 3. Seek to 0.5 s → sink was flushed once; total frames ≈ half the track.
-4. Two tracks, same spec → exactly one `configure`, frames = sum of both.
-5. Two tracks, different spec → two `configure` calls, in order.
+4. `play` then `set_next` with the same spec → exactly one `configure`, frames = sum
+   of both, and the state's `track` changes without passing through `Stopped`.
+5. `play` then `set_next` with a different spec → two `configure` calls, in order.
 6. A missing file → `play` returns `Err`, state stays `Stopped`.
 7. Negotiated spec differs from requested → `PlaybackState::Active.output` reports the
    negotiated one.
 8. Dropping every `Engine` handle joins the thread (the test would hang otherwise; wrap
    it in a timeout).
+9. `set_next(None)` after `set_next(Some(…))` → playback stops at the end of the
+   current track.
 
-## Step 6 — `aeri-ipc`: the `Player` trait and `LocalPlayer`
-
-```rust
-pub trait Player: Send + Sync {
-    fn play(&self, track: Track) -> impl Future<Output = Result<QueueItemId, PlayerError>> + Send;
-    fn enqueue(&self, track: Track) -> impl Future<Output = Result<QueueItemId, PlayerError>> + Send;
-    fn pause(&self) -> impl Future<Output = Result<(), PlayerError>> + Send;
-    fn resume(&self) -> impl Future<Output = Result<(), PlayerError>> + Send;
-    fn stop(&self) -> impl Future<Output = Result<(), PlayerError>> + Send;
-    fn seek(&self, to: Duration) -> impl Future<Output = Result<(), PlayerError>> + Send;
-    fn subscribe(&self) -> tokio::sync::watch::Receiver<PlaybackState>;
-}
-```
-
-- **Native async in traits, no `async-trait` crate.** The methods are declared as
-  `fn … -> impl Future<…> + Send` so that callers may spawn them on a multi-threaded
-  runtime; a bare `async fn` in a public trait would not promise `Send`. Implementors
-  still write plain `async fn`.
-- **Not `dyn`-compatible, on purpose.** Frontends are generic: `fn run<P: Player>(p: P)`.
-  If a single runtime-chosen player type is ever needed, add
-  `enum AnyPlayer { Local(LocalPlayer), Remote(RemotePlayer) }` implementing `Player` by
-  delegation — still no boxing of futures.
-- **Owned `aeri-core` types only** in every signature (ADR 0002), so each method maps
-  one-to-one onto an RPC later.
-- **`PlayerError` is transport-neutral**: `#[non_exhaustive]`, with variants a frontend
-  can act on (not found, unsupported format, output unavailable, disconnected). It does
-  not wrap `EngineError` publicly; `LocalPlayer` maps engine errors into it explicitly.
-  A remote client must be able to produce every variant.
-
-`LocalPlayer` is a thin newtype over `Engine`, compiled only with the `local` feature
-(ADR 0003). Add that feature in this step: make `aeri-engine` an optional dependency
-of `aeri-ipc`, declare `default = ["local"]` and `local = ["dep:aeri-engine"]`, and set
-`default-features = false` on the workspace's `aeri-ipc` entry so each consumer opts in.
-
-Done when: `LocalPlayer` has a test driving it only through `P: Player`, and
-`cargo check -p aeri-ipc --no-default-features` builds.
-
-## Step 7 — `aeri-cli`: `aeri play <path>`
+## Step 6 — `aeri-cli`: `aeri play <path>`
 
 - Argument parsing with `clap`'s derive API; a `Command` enum with one variant, `Play`.
 - `main` returns `anyhow::Result<()>`; a small `#[tokio::main(flavor = "current_thread")]`
   runtime is enough.
-- Depend on `aeri-ipc` with `features = ["local"]`; construct the platform sink, an
-  `Engine`, a `LocalPlayer`, and from there touch only the `Player` trait.
+- Depend on `aeri-engine` and `aeri-core` only, and build the engine with
+  `Engine::with_default_output()`. Depending on the engine directly is a temporary
+  exception that ends when `aeri-player` is created in Phase 4 (ADR 0006).
 - Print progress from `subscribe()`; `tokio::select!` it against `tokio::signal::ctrl_c()`.
   Exit when the state returns to `Stopped`.
 - User-facing output goes through one module that carries
@@ -410,6 +372,6 @@ Stop and raise it with the user, do not improvise, when:
 
 ## Not in these phases
 
-DSP of any kind (including volume and ReplayGain), resampling, the wire protocol, the
-daemon, `pause`/`stop`/`seek` as separate CLI invocations, the library, MPRIS, and the
-GUI. If a step seems to need one of these, the step is being over-built.
+DSP of any kind (including volume and ReplayGain), resampling, playlists, the queue,
+playback order, the `Player` handle, the library, scripting, MPRIS, and the GUI. If a
+step seems to need one of these, the step is being over-built.

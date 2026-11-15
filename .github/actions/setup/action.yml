@@ -1,7 +1,7 @@
 name: Set up aeri
 description: >-
-  Everything a job needs before it can run hooks: protoc, the pinned Rust
-  toolchain, a cargo cache, prek, and (optionally) the cargo tools the hooks call.
+  Everything a job needs before it can run hooks: the pinned Rust toolchain, a
+  cargo cache, prek, and (optionally) the cargo tools the hooks call.
 
 inputs:
   tools:
@@ -15,18 +15,6 @@ inputs:
 runs:
   using: composite
   steps:
-    - name: Install protoc (Linux)
-      if: runner.os == 'Linux'
-      shell: bash
-      run: |
-        sudo apt-get update -q
-        sudo apt-get install -y --no-install-recommends protobuf-compiler
-
-    - name: Install protoc (macOS)
-      if: runner.os == 'macOS'
-      shell: bash
-      run: brew install protobuf
-
     - name: Set up Rust toolchain
       shell: bash
       run: rustup toolchain install # reads rust-toolchain.toml
