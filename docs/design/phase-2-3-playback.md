@@ -23,7 +23,7 @@ plays the file through the default output device, prints position as it goes, st
 
 - **Signatures here are shapes, not gospel.** The `OutputSink` and `Decoder` traits and the core types other than `PlaybackState` were compile-checked under the workspace lint set on Rust 1.100. `PlaybackState`, the `Engine` API, and every method body were not. If the compiler or clippy objects, fix the signature in the idiomatic direction and keep the intent.
 - **Verify every external API before using it.** symphonia 0.6, rtrb, coreaudio-rs, pipewire, and tokio all move. Read the docs for the version `cargo add` resolves (`cargo doc --open -p <crate>` or docs.rs); do not write calls from memory.
-- **Add each dependency with the first line of code that uses it** (`cargo add`, then move the version into `[workspace.dependencies]`). `cargo-machete` rejects unused ones; `cargo-deny` rejects new licences until `deny.toml` is updated deliberately.
+- **Add each dependency with the first line of code that uses it** (`cargo add`, then move the version into `[workspace.dependencies]`). `cargo-shear` rejects unused ones; `cargo-deny` rejects new licences and new build scripts until `deny.toml` is updated deliberately; `cargo xtask check-deps` rejects default features left on.
 - **One step per commit**, on a `phase-3` branch.
 
 ## Step 1 — `aeri-core`: playback types

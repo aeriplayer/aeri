@@ -31,7 +31,7 @@ Read the architecture, the current brief, and the ADRs it cites before writing c
 # Once per clone
 brew install prek
 cargo xtask install-hooks
-cargo xtask install-tools   # nextest, cargo-hack, llvm-cov, cargo-mutants
+cargo xtask install-tools   # nextest, cargo-hack, llvm-cov, cargo-mutants, cargo-shear
 
 # Commit-stage checks over the whole tree (hygiene, fmt, lints, clippy)
 prek run --all-files
@@ -47,7 +47,7 @@ prek run coverage --stage manual --all-files
 prek run mutants --stage manual --all-files
 prek run miri --stage manual --all-files   # needs a nightly toolchain with miri
 
-# Move pinned hooks to their latest releases (commit SHAs, 7-day cooldown)
+# Move pinned hooks to their latest releases by hand (Renovate normally does this)
 prek update
 ```
 
@@ -83,8 +83,10 @@ When a decision of that kind is agreed, record it as an ADR before writing the c
 These fail the commit or the push; you do not need to remember them, only not to fight them.
 
 - No `unwrap()`, `todo!()`, `dbg!()`, or `println!` outside tests; no `unsafe` without opting in; every `unsafe` block has a `// SAFETY:` comment; public items are documented and `Debug`; suppressions are `#[expect(lint, reason = "…")]`, never `#[allow]`.
+- Files go through `fs_err`, threads through `thread::Builder` with a name (`clippy.toml`).
+- Every external dependency sets `default-features = false` and lists its features; crates with build scripts are named in `deny.toml`; versions younger than seven days are refused.
 - Only the engine depends on `aeri-audio` and `aeri-decode`. Frontends reach the application through `aeri-player` once it exists; until then `aeri-cli` alone may depend on `aeri-engine` (`deny.toml`, ADR 0006).
-- No unused dependencies; licences limited to the `deny.toml` allowlist.
+- No unused dependencies; licences limited to the `deny.toml` allowlist. Change the lockfile with `cargo update --precise`, never a bare `cargo update`.
 - Conventional Commits, scoped by crate, imperative subject of at most 72 characters, type one of `feat`, `fix`, `perf`, `refactor`, `docs`, `test`, `build`, `ci`, `chore`, `revert`. Commits are signed. No AI attribution anywhere in a commit.
 - No commits on `main`.
 
@@ -108,7 +110,7 @@ docs(adr): record ring buffer sizing rationale
 
 ## Distribution
 
-`cargo-dist` drives releases from `dist-workspace.toml`: signed and notarized `.dmg` on macOS, an AUR `PKGBUILD` in `pkg/aur/`, a Homebrew formula in `pkg/homebrew/`. Nothing has been released yet and the release workflow has never run.
+`cargo-dist` drives releases from `dist-workspace.toml`: signed and notarized `.dmg` on macOS, an AUR `PKGBUILD` in `pkg/aur/`, a Homebrew formula in `pkg/homebrew/`. Nothing has been released yet. The release workflow has never run end to end; CI runs `dist plan` against its configuration on every pull request that touches it.
 
 ## Licence
 

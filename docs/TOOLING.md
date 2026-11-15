@@ -14,6 +14,8 @@ Every check is defined once, in `prek.toml`. CI runs the same hooks rather than 
 
 Hooks that only make sense on a developer machine (signed commits, no commits to `main`) are skipped in CI: CI builds `main` itself, and merge commits created by GitHub are not signed with a contributor key.
 
+Two checks exist only in CI, because they need GitHub itself: the crate cooldown and the release plan (below).
+
 ### Priorities
 
 Hooks run in ascending priority; hooks sharing a priority run concurrently. Anything that rewrites files has a priority of its own, because two fixers touching one file at once is undefined. Cargo hooks are serialised as well: they would only queue on the build-directory lock.
@@ -24,7 +26,20 @@ Hooks run in ascending priority; hooks sharing a priority run concurrently. Anyt
 
 ### Pinning and cooldown
 
-`prek update` pins hooks to commit SHAs, because a tag can be moved and a SHA cannot, and holds back anything published in the last seven days so a compromised release has time to be noticed. Dependabot applies the same seven-day cooldown to crates and actions. The `# frozen: vX` and `# vX` markers beside SHAs are written by the tools; leave them.
+Hooks and actions are pinned to commit SHAs, because a tag can be moved and a SHA cannot. Nothing published in the last seven days is adopted, so a compromised release has time to be noticed. Renovate applies that cooldown to the updates it proposes. The `crate cooldown` CI job applies it to `Cargo.lock` itself, so a hand-run `cargo update` or `cargo add` is held to it as well. It uses Astral's reusable `cargo-cooldowns` action (Apache-2.0), which reads publication times from the crates.io index. To take a release sooner, for a security fix, add `.github/cargo-cooldowns.toml` with an exclusion naming the crate, the version, and the reason.
+
+Lockfile changes are made with `cargo update --precise <crate>@<version>`, never a bare `cargo update`, so a pull request changes only what it says it changes.
+
+The `# frozen: vX` and `# vX` markers beside SHAs are data: Renovate reads them to know which release a SHA is. `prek update` writes the same format and remains usable by hand.
+
+### What CI runs, and for how long
+
+- **Planning.** A `plan` job compares a pull request with its base. Changes confined to `docs/`, Markdown, `.claude/`, licences and `.rumdl.toml` skip the target matrix, coverage, mutants and Miri; the `checks` job still runs every hook over them. A crate that includes a Markdown file into its rustdoc with `include_str!` makes that file code, and the exclusions must then be narrowed. Pushes to `main` run everything. Skipped jobs count as passing for branch protection.
+- **Timeouts.** Every job has `timeout-minutes`. GitHub's default is six hours. The nextest timeout covers a hung test, not a hung build, a tool download or a Miri run.
+- **Retries.** `CARGO_NET_RETRY` and `RUSTUP_MAX_RETRIES` absorb transient registry and toolchain download failures.
+- **Cache.** `Swatinem/rust-cache` keeps the registry and compiled dependencies per job kind. Only runs on `main` write it, so a pull request can read the cache but cannot poison it.
+- **Concurrency.** A new push cancels the older run for the same pull request. A re-run of an older commit gets its own group, so it cannot cancel the latest one.
+- **Release plan.** When the release inputs change (`dist-workspace.toml`, `release.yml`, manifests, the lockfile, the toolchain), `dist plan` runs, so a broken release configuration fails on the pull request rather than on the first tag.
 
 ### Deliberate gaps
 
@@ -42,6 +57,8 @@ Hooks run in ascending priority; hooks sharing a priority run concurrently. Anyt
 | `mutants` | Mutates only the lines that differ from the base branch, then requires the tests to notice every mutation. Excluded mutants are named in `.cargo/mutants.toml` with the reason. |
 | `miri` | Needs `rustup toolchain install nightly --component miri`. Tests that cannot run under Miri (FFI, real I/O) opt out with `#[cfg_attr(miri, ignore)]`. |
 | `cargo-deny` | Runs at push because it reads the advisory database over the network. |
+| `cargo-shear` | Finds unused and misplaced dependencies from source references, across every `cfg` at once, including dev-dependencies, which Cargo's own `unused_dependencies` lint does not check. A false positive goes in `[package.metadata.cargo-shear] ignored` with a reason beside it. |
+| `check-deps` | `cargo xtask check-deps`: the dependency rules cargo-deny cannot express (below). |
 
 ## Test runner policy
 
@@ -61,6 +78,8 @@ The mechanical half of the "defensible dependencies" pillar in
 - **Targets** are only the platforms aeri ships on; a Windows-only advisory is not ours to chase.
 - **Licences** are permissive ones compatible with shipping `MIT OR Apache-2.0` binaries.
 - **Bans** enforce the crate graph: a listed crate may only be depended on directly by its `wrappers`. Only the engine composes the audio and decode layers. Frontends reach the application through `aeri-player` once it exists; until then `aeri-cli` is the engine's one permitted dependant (ADR 0006).
+- **Build scripts** run arbitrary code at compile time, so only crates named in `[bans.build] allow-build-scripts` may have one. A new entry is a deliberate act in review. `check-deps` fails on entries that no longer match a crate, so the list cannot accumulate stale permissions.
+- **Features are explicit.** Every external dependency a workspace crate declares sets `default-features = false` and names the features it uses (`check-deps`). Defaults are the crate author's guess at a typical user; this way nothing is compiled that our code did not ask for, and a new default in an upstream release does not arrive unannounced.
 - `publish = false` on every crate keeps them off crates.io (aeri ships as binaries) and lets cargo-deny tell the workspace's own path dependencies from wildcard requirements.
 
 ## Lint policy (`Cargo.toml`)
@@ -77,10 +96,26 @@ Every rule in `README.md` that a compiler can check is checked in `[workspace.li
 | `clone_on_ref_ptr` | Shared ownership is spelled `Arc::clone(&x)`, so a pointer copy is never mistaken for a deep clone. |
 | `lossy_float_literal` | A float literal that cannot be represented exactly is a bug in audio code. |
 | `mem_forget`, `error_impl_error`, `tests_outside_test_module`, `mod_module_files`, `unused_trait_names` | Leaking is never the fix; error types are named for what failed; tests live in `tests`; `foo.rs` plus `foo/`, never `foo/mod.rs`; trait-only imports are `use Trait as _`. |
+| `exit`, `empty_drop`, `empty_structs_with_brackets`, `rc_buffer`, `rc_mutex`, `rest_pat_in_fully_bound_structs` | No process exit outside `main`'s return, no meaningless `Drop` or `{}` structs, no `Rc` shapes that are almost always a mistake, no `..` that hides a field a reader needs to see. |
+| `iter_over_hash_type` | Iterating a `HashMap` gives a different order on every run. Output that a user or a test sees must be deterministic, so iterate a `BTreeMap` or sort first. |
+
+`clippy.toml` bans what a lint cannot express: `std::thread::spawn`, because long-lived threads are named (RUST_STYLE §5), and the `std::fs` functions and types, because file access goes through `fs_err` ([ADR 0012](adr/0012-filesystem-through-fs-err.md)). Each ban's message says what to use instead. Clippy reads the nearest `clippy.toml` *instead of* the root one, not merged with it: a per-crate file must repeat these entries.
 
 `pedantic` and `nursery` sit at priority −1 so the individual levels win. `missing_const_for_fn` is allowed: it fires on functions that are incidentally const-able today but would become breaking changes to un-const later.
 
 `clippy.toml` sets `too-many-arguments-threshold = 5`: beyond five positional arguments, use a struct.
+
+## Build profiles
+
+| Profile | Settings | Why |
+| --- | --- | --- |
+| `dev` | `debug = "line-tables-only"` | Backtraces keep file and line; dropping type and variable debug information makes builds markedly faster (uv measured 20%). The cost is that a debugger shows no variable values: set `CARGO_PROFILE_DEV_DEBUG=full` for a debugging session. |
+| `dev`, dependencies | `opt-level = 2` for every non-workspace crate | Decoding and DSP run in third-party code. Unoptimised, they can run slower than real time and make a debug build stutter for reasons that are not ours. Dependencies are compiled once and cached, so the cost is a slower first build. Our own code stays unoptimised and debuggable. |
+| `release` | `lto = "fat"`, `codegen-units = 1`, `strip = true` | Smallest, fastest binary; the slow link is paid in CI, not in the edit loop. |
+| `profiling` | `release` with `debug = "full"`, no strip, no LTO | Real symbols for samply or Instruments without waiting on LTO. Benchmarks build with it. |
+| `dist` | inherits `release` | The profile `dist build` uses. |
+
+Panics unwind in every profile. Whether a release build should abort on panic is undecided; it affects how the engine reports a crashed thread and needs an ADR.
 
 ## Toolchain
 
@@ -90,7 +125,7 @@ The minimum macOS version is `MACOSX_DEPLOYMENT_TARGET` in `.cargo/config.toml`,
 
 ## Release workflow
 
-`.github/workflows/release.yml` is a generated skeleton for cargo-dist 0.32.0; run `cargo dist generate` for the canonical output. It needs these repository secrets:
+`.github/workflows/release.yml` is maintained by hand rather than generated, as uv's is, so it can pin actions by SHA and pass zizmor. `allow-dirty = ["ci"]` in `dist-workspace.toml` tells dist not to compare it with its own template; the `release plan` CI job runs `dist plan` instead. The cargo-dist installer provides a binary named `dist`, not a cargo subcommand, so the workflows call `dist plan`, `dist build` and `dist host`. It needs these repository secrets:
 
 | Secret | Holds |
 | --- | --- |
@@ -108,6 +143,20 @@ The Sigstore / build-provenance step, when added, needs `id-token: write` and `a
 
 A security advisory can be published against a dependency on a day when nobody pushes. `audit.yml` runs the dependency policy daily so that is still noticed.
 
-## Dependabot
+## Renovate
 
-Keeps dependencies and CI actions current, so the project never again sits months behind without anyone deciding that it should. Every update arrives as a pull request and passes the same hooks as any other change. Compatible updates are grouped into one pull request; majors arrive one by one because each needs reading.
+Keeps every pinned version current, so the project never again sits months behind without anyone deciding that it should. Renovate replaces Dependabot because it can follow pins Dependabot cannot see:
+
+- crates and `Cargo.lock` (lockfile only; manifests keep their ranges);
+- GitHub Actions, pinned by SHA with the release in a comment;
+- the toolchain in `rust-toolchain.toml`, grouped with `rust-version` in `Cargo.toml` so the two stay equal;
+- the prek hook repositories in `prek.toml`, through a regex manager that reads the `# frozen:` markers;
+- the cargo tools in xtask's `TOOLS` table and the cargo-dist version in the workflows and `dist-workspace.toml`.
+
+Every update waits out the seven-day cooldown, refuses a release with no publication timestamp, and arrives as a Conventional Commit (`build(deps): …`, `ci(deps): …`) that passes the same hooks as any other change. Compatible crate updates are grouped into one pull request; majors arrive one by one because each needs reading. Security fixes skip the cooldown. A dependency dashboard issue lists everything pending.
+
+Renovate runs as a GitHub App, which has to be installed on the repository once.
+
+## Editor files
+
+`.editorconfig` gives editors the settings the formatters enforce (UTF-8, LF, final newline, indent widths), so a file is right before a hook rewrites it. `.gitattributes` stores every text file with LF and marks audio fixtures binary, so Git never converts line endings inside a FLAC or MP3.
