@@ -3,7 +3,9 @@
 This document is the authoritative reference for system design, structural constraints,
 and non-obvious decisions. Process, conventions, and build instructions live in
 `CLAUDE.md`. New architectural decisions should be recorded here as ADRs in
-`docs/adr/`.
+`docs/adr/`; the rules for when one is required are in
+[`adr/README.md`](adr/README.md). Rust conventions are in
+[`RUST_STYLE.md`](RUST_STYLE.md).
 
 ---
 
@@ -112,6 +114,11 @@ engine's single command queue and apply in arrival order; conflicts are
 last-writer-wins. State is observed through a subscription on the `Player` trait — a
 server-streaming RPC on the wire — never by polling. The subscription is part of the
 trait from its first version.
+
+Inside the process, the engine is an actor (ADR 0010): one thread owns all playback
+state, commands reach it as messages with a reply channel, and state leaves it on a
+watch channel. A new subscriber sees the current state at once; a slow one skips to the
+latest. No lock guards playback state.
 
 ### IPC protocol
 
@@ -377,9 +384,6 @@ These must be resolved before the relevant crate is written.
 - **Metadata schema** — exact shape of tracks, albums, artists, tags, and custom fields.
   Designed at the start of Phase 4 with the SQLite schema and library RPCs that consume
   it (ADR 0009). Until then `aeri-core` carries playback types only.
-- **State fan-out** — how the multi-client daemon (ADR 0001) delivers state to
-  subscribers: initial snapshot on subscribe, slow-subscriber policy. Design before the
-  Phase 4 wire protocol.
 - **Smart playlist DSL** — deferred to v0.2.
 - **GUI visual language** — typography, spacing, colour system on GPUI. TBD during the
   v0 GUI phase.
@@ -401,3 +405,4 @@ These must be resolved before the relevant crate is written.
 | GUI toolkit | GPUI, replacing iced | [ADR 0007](adr/0007-gpui-for-the-gui.md) |
 | Format floor | Adds AAC and ALAC; Opus via libopus is the one C codec | [ADR 0008](adr/0008-format-floor-aac-alac.md) |
 | Metadata schema timing | Phase 4, not Phase 2 | [ADR 0009](adr/0009-defer-metadata-schema.md) |
+| Engine concurrency and state fan-out | The engine is an actor; state is a watch channel | [ADR 0010](adr/0010-engine-is-an-actor.md) |
