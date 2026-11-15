@@ -7,7 +7,7 @@ repository.workspace   = true
 authors.workspace      = true
 rust-version.workspace = true
 publish.workspace      = true
-description            = "Player engine: composes audio output and decoding; DSP and library join in later phases"
+description            = "Audio engine: composes decoding, DSP and output for a current track and a next slot"
 
 [lints]
 workspace = true

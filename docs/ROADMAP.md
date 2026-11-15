@@ -1,26 +1,19 @@
 # aeri — Roadmap
 
-Phases track progress from scaffolding through stable desktop to streaming and mobile.
-Architectural decisions that gate specific phases are noted inline; their rationale lives
-in [`ARCHITECTURE.md`](ARCHITECTURE.md).
+Phases run from scaffolding to a foobar2000-class desktop player
+([ADR 0001](adr/0001-desktop-player-scope.md)). Each phase ends in something usable.
+Rationale lives in [`ARCHITECTURE.md`](ARCHITECTURE.md) and the ADRs.
 
 ---
 
 ## Phase 0 — Scaffolding ✓
 
-> Workspace exists, all crates compile, dependency graph is locked.
+> Workspace exists, all crates compile.
 
-- [x] Initialize Cargo workspace; `cargo new --lib` for all crates
-- [x] Wire `[workspace.dependencies]` and `[workspace.lints]`
+- [x] Cargo workspace, `[workspace.dependencies]`, `[workspace.lints]`
 - [x] `rust-toolchain.toml`, `rustfmt.toml`, `dist-workspace.toml`
 - [x] `LICENSE-MIT`, `LICENSE-APACHE`, `COPYRIGHT`
-- [x] `proto/aeri/v1/player.proto` stub; `aeri-ipc` build script with `buffa-build` +
-      `connectrpc-build`
 - [x] `docs/ARCHITECTURE.md`
-
-Five of the scaffolded crates (`aeri-library`, `aeri-dsp`, `aeri-platform`, `aeri-gui`,
-`aeri-stream`) were later removed as empty stubs. Each is re-created in the phase that
-first needs it, noted below.
 
 ---
 
@@ -28,158 +21,169 @@ first needs it, noted below.
 
 > CI green on all targets; release pipeline wired.
 
-- [x] GitHub Actions matrix: `aarch64-apple-darwin`, `x86_64-unknown-linux-gnu`,
+- [x] GitHub Actions on `aarch64-apple-darwin`, `x86_64-unknown-linux-gnu`,
       `aarch64-unknown-linux-gnu`
-  - Jobs: `cargo check`, `cargo test`, `cargo clippy -- -D warnings`, `cargo fmt --check`
-- [x] `cargo-dist` skeleton — installers, artifact upload, release draft
-- [x] `git init`, initial commit
-- [x] Push to remote
+- [x] prek hooks for lints, tests, docs, and dependency policy, run from CI
+- [x] `cargo-dist` skeleton
 
 ---
 
 ## Phase 2 — Core playback types
 
-> `aeri-core` defines what playback needs, and nothing more. The metadata schema waits
-> for Phase 4, where its consumers are ([ADR 0009](adr/0009-defer-metadata-schema.md)).
+> `aeri-core` defines what playback needs, and nothing more.
 
-No blockers. Small enough to fold into the start of Phase 3 work. Both phases are
-specified step by step in [`design/phase-2-3-playback.md`](design/phase-2-3-playback.md).
+Small enough to fold into the start of Phase 3. Both phases are specified step by step
+in [`design/phase-2-3-playback.md`](design/phase-2-3-playback.md).
 
-- [x] Finalize daemon concurrency model: multi-client
-      ([ADR 0001](adr/0001-multi-client-daemon.md))
-- [ ] `PlaybackState`: stopped, playing, paused, buffering; position + duration
-- [ ] `Queue`
-- [ ] Minimal `Track`: source location, duration, optional title / artist / album
-- [ ] Unit tests for domain type invariants
+- [ ] `SampleRate`, `Channels`, `StreamSpec`
+- [ ] Minimal `Track`: source, duration, optional title / artist / album
+      ([ADR 0009](adr/0009-open-tag-metadata.md))
+- [ ] `PlaybackState`: stopped, or active with transport, position, and output spec
+- [ ] Unit tests for the type invariants
 
 ---
 
-## Phase 3 — Minimal end-to-end
+## Phase 3 — First audio
 
-> `aeri play file.flac` produces audio. The engine, decoder, and `Player` trait are
-> proven to compose. No wire protocol or daemon yet
-> ([ADR 0002](adr/0002-defer-wire-protocol.md)).
+> `aeri play file.flac` produces sound. The decoder, engine, and sink are proven to
+> compose.
 
-- [ ] `OutputSink` trait in `aeri-audio` — the v1.x streaming seam; do not skip
-- [ ] `FakeSink` implementation for tests (captures samples, asserts on output)
-- [ ] `aeri-decode`: symphonia adapter behind a `Decoder` trait; FLAC + MP3 first
-- [ ] `aeri-audio`: native sink for the development platform first (`CoreAudioSink`),
-      real-time output thread, `rtrb` ring buffer, atomics for paused / flush
-      ([ADR 0004](adr/0004-native-output-backends.md))
+- [ ] `OutputSink` trait and `FakeSink` in `aeri-audio`
+- [ ] `aeri-decode`: `Decoder` over symphonia; FLAC and MP3
+      ([ADR 0007](adr/0007-symphonia-flac-mp3-first.md))
+- [ ] `aeri-audio`: `CoreAudioSink`, the real-time thread, `rtrb` ring buffer, atomics
+      for paused and flush ([ADR 0003](adr/0003-native-output-backends.md))
 - [ ] `aeri-audio`: `PipeWireSink`; report the negotiated rate
-- [ ] Command channel into the decode thread: play, seek, stop
-- [ ] `aeri-engine`: wires decoder → DSP chain → resampler → `OutputSink`
-- [ ] `aeri-ipc`: `aeri-engine` optional behind default-on `local` feature
-      ([ADR 0003](adr/0003-ipc-local-feature.md))
-- [ ] `aeri-ipc`: `Player` trait (play, pause, stop, seek, state subscription; owned
-      `aeri-core` types only); `LocalPlayer` wrapping the engine
-- [ ] `aeri-cli`: `play <path>` in the foreground, driving `LocalPlayer`
-- [ ] Integration test: engine plays a fixture FLAC through `FakeSink`, asserts on
-      sample count and silence-free output
+- [ ] `aeri-engine`: the playback actor ([ADR 0004](adr/0004-engine-is-an-actor.md))
+      with a current track and a next slot
+      ([ADR 0005](adr/0005-engine-plays-current-and-next.md))
+- [ ] `aeri-cli`: `play <path>` in the foreground
+- [ ] Integration tests through `FakeSink`: sample counts, pause, seek, gapless and
+      re-init transitions
 
 ---
 
-## Phase 4 — Library
+## Phase 4 — Playback
 
-> Users can point aeri at a music directory and browse/search it. The daemon and wire
-> protocol land first, since the library RPCs need them.
+> A player, not a file opener: playlists, a queue, playback order, volume, ReplayGain.
+> Still driven from the CLI.
 
-- [ ] Create the `aeri-library` crate; add `rusqlite`, `lofty`, `jwalk`, `rayon`,
-      `notify` at then-current versions
-- [ ] Metadata schema: `Track`, `Album`, `Artist`, custom tag fields — designed with
-      the SQLite schema below; `aeri-core` types grow to match
-      ([ADR 0009](adr/0009-defer-metadata-schema.md))
-- [ ] `proto/aeri/v1/player.proto`: `Play`, `Pause`, `Stop`, `Seek`, server-streaming
-      `WatchState`; Connect service + `RemotePlayer` in `aeri-ipc`
-- [ ] `aeri-cli`: `daemon`, plus `pause`, `stop`, `seek <seconds>` over `RemotePlayer`
-- [ ] SQLite schema + required PRAGMAs applied on every new connection
-- [ ] Connection layer: one writer thread fed by a channel + read-only WAL
-      connections ([ADR 0005](adr/0005-sqlite-single-writer.md))
-- [ ] Tag ingestion pipeline: `jwalk` walk → extension filter → `lofty` read → upsert
-- [ ] FTS5 external-content virtual table: `title / artist / album / album_artist / composer`
-- [ ] Keyset-paginated browse queries (no `OFFSET`)
-- [ ] `notify` filesystem watcher for incremental rescans
-- [ ] IPC RPCs: `ScanLibrary`, `ListTracks`, `SearchTracks`, `GetAlbum`, `ListAlbums`
-- [ ] `tests/fixtures/`: small FLAC, MP3, Ogg, M4A (AAC + ALAC) files covering
-      edge-case tag encodings
-- [ ] Integration tests: round-trip tag reads, FTS query coverage, scan idempotency
+- [ ] Create `aeri-player`: the `Player` handle
+      ([ADR 0006](adr/0006-frontends-use-the-player-handle.md)); move `aeri-cli` onto
+      it and close the `deny.toml` exception
+- [ ] Playlists with stable entry ids; the active playlist
+- [ ] Playback order: default, repeat track, repeat playlist, shuffle
+- [ ] The queue; stop after current
+- [ ] The engine's "took the next track" event, and the player refilling the slot
+- [ ] Create `aeri-dsp`: `DspNode`, the chain, a registry
+      ([ADR 0002](adr/0002-compiled-in-extension-points.md))
+- [ ] Volume and ReplayGain nodes; `rubato` resampler for refused device rates
+- [ ] `aeri-cli`: `play <paths…>`, directories, M3U files; interactive transport keys
+- [ ] Gapless verified end to end across a playlist
 
 ---
 
-## Phase 5 — DSP chain and platform integration
+## Phase 5 — Library
 
-> Full DSP chain with ReplayGain; bit-perfect path when DSP is bypassed. Platform OS
-> integration active.
+> Point aeri at a music directory; it remembers what is there.
 
-- [ ] Create the `aeri-dsp` and `aeri-platform` crates; add `rubato`, `zbus`, `objc2`
-- [ ] `aeri-dsp`: DSP node trait; `ReplayGainNode`, `VolumeNode`, `EqualizerNode`
-- [ ] `rubato` sinc resampler wired as the terminal DSP node
-- [ ] ReplayGain on by default; track and album modes; R128 loudness fallback
-- [ ] `aeri-platform`, as a `Player` client started by the engine's host process
-      ([ADR 0006](adr/0006-platform-integrations-are-player-clients.md)):
-  - Linux: MPRIS D-Bus service via `zbus` (play/pause/next/prev/metadata)
-  - macOS: MediaPlayer Now Playing + remote command center via `objc2`
-- [ ] Format support floor complete: MP3, FLAC, Ogg Vorbis, Opus, WAV, AIFF, AAC, ALAC
-      ([ADR 0008](adr/0008-format-floor-aac-alac.md)); confirm AAC profile coverage
-      with fixtures
-- [ ] Gapless playback verified end-to-end via integration test (same-format
-      transitions); format-change re-init verified separately
+- [ ] Metadata design: the `Track` type, tag-name normalisation, SQLite schema
+      ([ADR 0009](adr/0009-open-tag-metadata.md))
+- [ ] Create `aeri-library`: `rusqlite`, one writer thread, PRAGMAs
+      ([ADR 0008](adr/0008-library-sqlite-and-in-memory-store.md))
+- [ ] Scan pipeline: `jwalk` walk → extension filter → `lofty` read → batched upsert
+- [ ] In-memory snapshot, published on a watch channel; string interning
+- [ ] Measure at 100,000 generated tracks: memory, start-up load, full scan
+- [ ] `notify` watcher for incremental rescans
+- [ ] Playlists, the queue, and playback position persisted across restarts
+- [ ] M3U / M3U8 import and export
+- [ ] Fixtures covering edge-case tag encodings; scan idempotency tests
 
 ---
 
-## Phase 6 — First GUI (v0.1 milestone)
+## Phase 6 — Scripting
 
-> Usable by the developer. Not yet polished. Ships as a signed binary.
+> One language formats every string and answers every query.
 
-- [ ] GPUI verification before any screens: accessibility support, Linux
-      requirements, 50,000-row track list with live search
-      ([ADR 0007](adr/0007-gpui-for-the-gui.md))
-- [ ] Create the `aeri-gui` crate: GPUI application shell; channel bridge to `Player`
-- [ ] Now-playing panel: cover art, title/artist/album, position scrubber, transport
-- [ ] Queue panel: ordered list, drag-to-reorder, remove item
-- [ ] Library panel: album grid, track list, search box wired to FTS5
-- [ ] macOS: `.dmg` via `cargo-dist`; signed + notarized
-- [ ] Linux: AUR `PKGBUILD` draft
-- [ ] Visual language decision: typography, spacing, colour system
-
----
-
-## v1.0 — Stable desktop release
-
-> Polished, documented, publicly available. Homebrew tap live.
-
-- [ ] Smart playlist DSL (design deferred to this milestone)
-- [ ] Tag editor in GUI
-- [ ] Full keyboard navigation
-- [ ] Accessibility audit
-- [ ] Homebrew tap (`pkg/homebrew/`)
-- [ ] AUR publish
-- [ ] `cargo-dist` release with Sigstore signing + GitHub provenance attestations
+- [ ] Compatibility decision: supported functions and operators, deliberate
+      differences from foobar2000
+- [ ] Create `aeri-script`: lexer, parser, tree
+      ([ADR 0010](adr/0010-one-script-language.md))
+- [ ] Title formatting: fields, functions, conditional sections
+- [ ] Queries: comparison, text match, boolean operators, sort clauses
+- [ ] Property tests and a fuzz target; evaluator benchmark at 100,000 tracks
+- [ ] Library search, filters, and sorting through queries
+- [ ] Autoplaylists
+- [ ] `aeri-cli`: scripted output format; `search <query>`
 
 ---
 
-## v1.x — Streaming and remote clients
+## Phase 7 — First GUI
 
-> Play your desktop library on a phone over LAN. No new iOS app required.
+> Usable by the developer every day.
 
-The `OutputSink` trait (Phase 3) is the seam that makes this possible without engine
-changes. If it was skipped, this phase requires invasive rework.
-
-- [ ] `aeri-stream` crate: `StreamSink` implementing `OutputSink`; encodes to Opus,
-      feeds HTTP response body
-- [ ] Subsonic-compatible REST API (unlocks Amperfy, play:Sub, substreamer on iOS)
-- [ ] Progressive HTTP and HLS streaming endpoints
-- [ ] mDNS/Bonjour LAN discovery
-- [ ] Pairing auth: displayed-code flow on desktop, token issued to client
-- [ ] IPC metadata contract verified: every track row renderable without a follow-up call
+- [ ] GPUI verification before any screen: 50,000-row scripted table, deserialised
+      splitter tree, accessibility, Linux requirements
+      ([ADR 0011](adr/0011-gpui-and-layout-as-data.md))
+- [ ] Create `aeri-gui`: application shell, widget trait and registry, layout tree
+      loaded from a file
+- [ ] Playlist view: scripted columns, grouping, sorting, selection, drag to reorder
+- [ ] Playlist tabs
+- [ ] Transport controls, seekbar, volume
+- [ ] Library tree and filter widgets; search box
+- [ ] Cover art; status bar
+- [ ] Keyboard shortcuts
+- [ ] Visual language decision: typography, spacing, colour
 
 ---
 
-## v2 — Native iOS client
+## Phase 8 — Platform integration (v0.1 milestone)
 
-> `aeri-ios` — native app using Connect for control, AVPlayer for audio.
+> A signed binary that behaves like a native player.
 
-- [ ] Separate repo: `aeri-ios`
-- [ ] Connect Swift SDK for `PlayerService` RPC
-- [ ] AVPlayer consuming the HTTP audio stream from `aeri-stream`
-- [ ] Library browse and search via the same IPC APIs the desktop GUI uses
+- [ ] Create `aeri-platform` as a `Player` frontend (ADR 0006)
+  - Linux: MPRIS via `zbus`
+  - macOS: Now Playing and remote commands via `objc2`
+- [ ] Media keys; sleep inhibition during playback
+- [ ] macOS: signed and notarized `.dmg` via `cargo-dist`
+- [ ] Linux: AUR `PKGBUILD`
+
+---
+
+## v1.0 — The customisable player
+
+> What makes it foobar: the user shapes it.
+
+- [ ] Layout editing inside the application; layout presets
+- [ ] Settings interface
+- [ ] Tag editor
+- [ ] DSP chain editor; equaliser
+- [ ] ReplayGain scanner
+- [ ] Fades on pause, stop, and seek; crossfade
+- [ ] Queue viewer; playback statistics (play count, rating)
+- [ ] Device selection
+- [ ] Full keyboard navigation; accessibility audit
+- [ ] Homebrew tap and AUR publish; Sigstore signing and provenance attestations
+
+---
+
+## Later
+
+Unordered, and each needs its own design.
+
+- More formats (ADR 0007)
+- CUE sheets, including embedded
+- Waveform seekbar, spectrum, VU meter
+- Lyrics
+- Scrobbling
+- Internet radio and remote streams
+- File operations: rename, move, copy by script
+- Audio conversion
+- Controlling a running instance from the CLI
+- Third-party extensions (ADR 0002)
+
+## Not planned
+
+Windows. PulseAudio, ALSA, and JACK outputs. Audio CD playback and ripping. Tracker
+and video-game music formats. A daemon, a network API, streaming to other devices, a
+mobile client (ADR 0001).

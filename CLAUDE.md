@@ -1,8 +1,13 @@
 # aeri
 
-Modern audio player for macOS and Linux. Apple Silicon and modern Linux only. Rust
-throughout, with one C codec (libopus). The project is meant to show Rust at its best;
-the owner is new to Rust, so explain language-specific choices when you make them.
+A foobar2000-class music player for macOS and Linux, modelled on
+[fooyin](https://github.com/fooyin/fooyin): playlists, a library, one script language,
+and an interface built from widgets. Apple Silicon and modern Linux only; Windows is
+never considered. Rust throughout. The project is meant to show Rust at its best; the
+owner is new to Rust, so explain language-specific choices when you make them.
+
+fooyin is GPL-3.0-or-later and aeri is `MIT OR Apache-2.0`. Read fooyin to learn how a
+problem is shaped; never translate its code (ADR 0001).
 
 ## Status
 
@@ -10,7 +15,7 @@ Phase 1 (CI, release pipeline, hooks) is complete. **Next: Phases 2–3, first a
 specified step by step in
 [`docs/design/phase-2-3-playback.md`](docs/design/phase-2-3-playback.md).
 
-Six crates exist: `aeri-core`, `aeri-audio`, `aeri-decode`, `aeri-engine`, `aeri-ipc`,
+Five crates exist: `aeri-core`, `aeri-audio`, `aeri-decode`, `aeri-engine`,
 `aeri-cli`. All are empty apart from doc comments. Planned crates are created in the
 phase that first needs them — do not scaffold early.
 
@@ -57,8 +62,8 @@ Update this section whenever a step or phase completes.
 - add a dependency the brief does not name, or a new crate;
 - write `unsafe` outside `aeri-audio`, or allocate, lock, log, or block in the
   real-time audio callback;
-- change a public trait that crosses a crate boundary (`Player`, `OutputSink`,
-  `Decoder`);
+- change a public trait that crosses a crate boundary (`OutputSink`, `Decoder`,
+  `DspNode`), or an existing method of the `Player` handle;
 - push, merge to `main`, rewrite history, or tag a release.
 
 When a decision of that kind is agreed, record it as an ADR before writing the code
@@ -73,8 +78,9 @@ them.
   opting in; every `unsafe` block has a `// SAFETY:` comment; public items are
   documented and `Debug`; suppressions are `#[expect(lint, reason = "…")]`, never
   `#[allow]`.
-- Frontends cannot depend on `aeri-engine`; only the engine depends on `aeri-audio` and
-  `aeri-decode` (`deny.toml`).
+- Only the engine depends on `aeri-audio` and `aeri-decode`. Frontends reach the
+  application through `aeri-player` once it exists; until then `aeri-cli` alone may
+  depend on `aeri-engine` (`deny.toml`, ADR 0006).
 - No unused dependencies; licences limited to the `deny.toml` allowlist.
 - Conventional Commits, scoped by crate, imperative subject of at most 72 characters,
   type one of `feat`, `fix`, `perf`, `refactor`, `docs`, `test`, `build`, `ci`,
@@ -108,9 +114,6 @@ prek run cargo-clippy --all-files
 prek run coverage --stage manual --all-files
 prek run mutants --stage manual --all-files
 prek run miri --stage manual --all-files   # needs a nightly toolchain with miri
-
-# Regenerate IPC code after editing proto/ (requires protoc)
-cargo xtask gen-proto
 
 # Move pinned hooks to their latest releases (commit SHAs, 7-day cooldown)
 prek update

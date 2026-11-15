@@ -6,7 +6,6 @@ use anyhow::{Context as _, Result, bail, ensure};
 
 const USAGE: &str = "\
 tasks:
-  gen-proto      regenerate IPC code from proto/ (requires protoc)
   install-hooks  install the Git hooks defined in prek.toml (requires prek)
   install-tools  install the cargo subcommands the hooks and CI call
   release        not implemented yet; use `cargo dist build`";
@@ -25,7 +24,6 @@ const TOOLS: &[(&str, &str)] = &[
 
 fn main() -> Result<()> {
     match std::env::args().nth(1).as_deref() {
-        Some("gen-proto") => gen_proto(),
         Some("install-hooks") => install_hooks(),
         Some("install-tools") => install_tools(),
         Some("release") => bail!("`release` is not implemented yet; run `cargo dist build`"),
@@ -68,13 +66,6 @@ fn install_tools() -> Result<()> {
         run(&mut command).with_context(|| format!("could not install {spec}"))?;
     }
     Ok(())
-}
-
-/// Rebuilds `aeri-ipc`, whose build script regenerates the IPC code when a `.proto`
-/// file has changed.
-fn gen_proto() -> Result<()> {
-    let cargo = std::env::var("CARGO").unwrap_or_else(|_| "cargo".into());
-    run(Command::new(cargo).args(["build", "--package", "aeri-ipc"]))
 }
 
 /// Runs `command` to completion, turning a non-zero exit into an error.

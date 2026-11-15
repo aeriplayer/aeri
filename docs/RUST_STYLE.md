@@ -83,7 +83,7 @@ struct SampleRate(NonZeroU32);
 ## 5. Concurrency
 
 - **Share by communicating.** State owned by one thread and reached through channels
-  (the actor pattern, ADR 0010) is preferred over `Arc<Mutex<T>>`. A mutex is acceptable
+  (the actor pattern, ADR 0004) is preferred over `Arc<Mutex<T>>`. A mutex is acceptable
   for small, rarely contended data with no ordering concerns; say why in a comment.
 - Never hold a lock across an `.await`.
 - Blocking work (file I/O, decoding, SQLite) does not run on async worker threads:
@@ -166,7 +166,7 @@ A comment earns its place only as one of these, in one or two lines:
 - a **workaround**, naming what it works around and, where known, when to remove it;
 - a **surprising choice**, where the obvious alternative was tried or rejected;
 - a **`// SAFETY:`** justification, or the `reason` of an `#[expect]` (lint-enforced);
-- a **pointer** to the document that holds the longer reason (`// See ADR 0010`).
+- a **pointer** to the document that holds the longer reason (`// See ADR 0004`).
 
 Never write:
 
@@ -186,7 +186,7 @@ Where the explanation goes instead:
 | Why a tool, hook, lint or CI job is configured as it is | [`TOOLING.md`](TOOLING.md) |
 | Anything a newcomer must know before touching an area | A Markdown file in `docs/`, linked from the code |
 
-The same rule governs configuration files (`.toml`, `.yml`, `.proto`). Do not describe
+The same rule governs configuration files (`.toml`, `.yml`). Do not describe
 what a key does; the tool's own documentation does that. Version markers written by
 tools (`# frozen: v1.1.12`, `# v7.0.1`) and `#:schema` directives are data and stay.
 

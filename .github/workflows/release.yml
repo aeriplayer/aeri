@@ -63,17 +63,6 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Install system dependencies (Linux)
-        if: runner.os == 'Linux'
-        run: |
-          sudo apt-get update -q
-          sudo apt-get install -y --no-install-recommends \
-            protobuf-compiler
-
-      - name: Install system dependencies (macOS)
-        if: runner.os == 'macOS'
-        run: brew install protobuf
-
       - name: Install cargo-dist
         run: |
           curl --proto '=https' --tlsv1.2 -LsSf \

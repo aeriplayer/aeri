@@ -10,8 +10,8 @@ Write one **before** the code when a change does any of the following:
 - adds, removes, or replaces a dependency that shapes a crate (not a patch bump);
 - adds a crate, or changes which crate may depend on which;
 - changes a "locked decision" or a pillar in [`ARCHITECTURE.md`](../ARCHITECTURE.md);
-- changes a public trait that crosses a crate boundary (`Player`, `OutputSink`,
-  `Decoder`);
+- changes a public trait that crosses a crate boundary (`OutputSink`, `Decoder`,
+  `DspNode`), or the `Player` handle's existing methods;
 - introduces `unsafe` somewhere new, a new thread, or a new channel between threads;
 - relaxes a lint, a hook, or a `deny.toml` rule.
 
@@ -62,13 +62,14 @@ verified. Include the condition under which this should be revisited.
 
 | ADR | Decision |
 | --- | --- |
-| [0001](0001-multi-client-daemon.md) | The daemon is multi-client |
-| [0002](0002-defer-wire-protocol.md) | Phase 3 ships `LocalPlayer` only; wire protocol in Phase 4 |
-| [0003](0003-ipc-local-feature.md) | `aeri-ipc` depends on `aeri-engine` only behind `local` |
-| [0004](0004-native-output-backends.md) | Native output backends; bit-perfect and gapless scoped |
-| [0005](0005-sqlite-single-writer.md) | One SQLite writer, N WAL readers |
-| [0006](0006-platform-integrations-are-player-clients.md) | Platform integrations are `Player` clients |
-| [0007](0007-gpui-for-the-gui.md) | The GUI is built on GPUI |
-| [0008](0008-format-floor-aac-alac.md) | AAC and ALAC in the format floor; Opus is a C exception |
-| [0009](0009-defer-metadata-schema.md) | Metadata schema designed in Phase 4 |
-| [0010](0010-engine-is-an-actor.md) | The engine is an actor; state fans out on a watch channel |
+| [0001](0001-desktop-player-scope.md) | A foobar2000-class desktop player; no daemon, no network API |
+| [0002](0002-compiled-in-extension-points.md) | Extension points are traits with registries, compiled in |
+| [0003](0003-native-output-backends.md) | Native output backends; bit-perfect and gapless scoped |
+| [0004](0004-engine-is-an-actor.md) | The engine is an actor; state fans out on a watch channel |
+| [0005](0005-engine-plays-current-and-next.md) | The engine plays a current track and a next slot |
+| [0006](0006-frontends-use-the-player-handle.md) | Frontends use one concrete `Player` handle |
+| [0007](0007-symphonia-flac-mp3-first.md) | symphonia, FLAC and MP3 first; formats on demand |
+| [0008](0008-library-sqlite-and-in-memory-store.md) | SQLite for persistence, an in-memory store for queries |
+| [0009](0009-open-tag-metadata.md) | Open, multi-value tag map; schema waits for the library |
+| [0010](0010-one-script-language.md) | One script language formats and queries tracks |
+| [0011](0011-gpui-and-layout-as-data.md) | The GUI is built on GPUI; layout is data |

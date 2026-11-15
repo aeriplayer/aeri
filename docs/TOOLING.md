@@ -58,7 +58,7 @@ leave them.
 | --- | --- |
 | `cargo-nextest` | One process per test, hung tests killed, no retries (`.config/nextest.toml`). `--no-tests=pass` only matters while crates are empty; remove it with the first test. |
 | `cargo-doctest` | nextest does not run documentation examples. |
-| `cargo-hack` | Every feature combination must compile alone, so a gated boundary such as `aeri-ipc`'s `local` feature (ADR 0003) cannot rot unnoticed. |
+| `cargo-hack` | Every feature combination must compile alone, so a gated boundary such as `aeri-audio`'s `test-util` feature cannot rot unnoticed. |
 | `coverage` | Excludes `xtask/` and `build.rs`: build automation, not product code. The floor is a tripwire, not a goal ([`TESTING.md`](TESTING.md)). |
 | `mutants` | Mutates only the lines that differ from the base branch, then requires the tests to notice every mutation. Excluded mutants are named in `.cargo/mutants.toml` with the reason. |
 | `miri` | Needs `rustup toolchain install nightly --component miri`. Tests that cannot run under Miri (FFI, real I/O) opt out with `#[cfg_attr(miri, ignore)]`. |
@@ -86,8 +86,9 @@ The mechanical half of the "defensible dependencies" pillar in
   to chase.
 - **Licences** are permissive ones compatible with shipping `MIT OR Apache-2.0` binaries.
 - **Bans** enforce the crate graph: a listed crate may only be depended on directly by
-  its `wrappers`. Frontends reach the engine through the `Player` trait in `aeri-ipc`,
-  never directly, and only the engine composes the audio and decode layers.
+  its `wrappers`. Only the engine composes the audio and decode layers. Frontends reach
+  the application through `aeri-player` once it exists; until then `aeri-cli` is the
+  engine's one permitted dependant (ADR 0006).
 - `publish = false` on every crate keeps them off crates.io (aeri ships as binaries) and
   lets cargo-deny tell the workspace's own path dependencies from wildcard requirements.
 

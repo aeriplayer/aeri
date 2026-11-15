@@ -43,14 +43,14 @@ Install the tools once with `cargo xtask install-tools`.
 
 | Code | Required | Why |
 | --- | --- | --- |
-| Pure logic with invariants (`Queue`, newtypes, position maths) | Unit tests **and** property tests | Hand-picked examples miss the sequence of operations that breaks an invariant; `proptest` finds it |
-| Anything parsing bytes we did not write (decoders, tags, playlists, IPC input) | Fixture tests **and** a fuzz target | Media files in the wild are malformed; a decoder must never panic or loop forever |
+| Pure logic with invariants (playlists, newtypes, position maths, the script evaluator) | Unit tests **and** property tests | Hand-picked examples miss the sequence of operations that breaks an invariant; `proptest` finds it |
+| Anything parsing bytes we did not write (decoders, tags, playlist files, scripts) | Fixture tests **and** a fuzz target | Media files in the wild are malformed; a decoder must never panic or loop forever |
 | `unsafe` code and its safe wrappers | Unit tests run under Miri | Miri catches use-after-free, bad aliasing, and uninitialised reads that pass normal tests |
 | Lock-free and atomic code (the ring-buffer bridge, flush generation) | A `loom` model test | Races depend on interleavings that never occur on a developer machine |
 | The real-time callback body | Unit tests under an allocation guard | An allocation on the audio thread is a glitch, not a test failure, unless a test makes it one |
 | The engine | Integration tests against `FakeSink` | Deterministic; no device, no timing |
 | Device sinks | Manual listening, plus the above for their callback | CI runners have no audio hardware |
-| Hot paths (decode throughput, DSP nodes, library scan) | Benchmarks, from Phase 5 | A regression needs a number to be noticed |
+| Hot paths (decode throughput, DSP nodes, library scan) | Benchmarks, from Phase 4 | A regression needs a number to be noticed |
 
 ## Standards
 
@@ -77,6 +77,6 @@ Recorded here so the gap is visible rather than assumed away.
 - **Fuzzing and `loom`** have no code to act on yet. They are required by the design
   brief at the step that introduces a decoder and the real-time bridge, and CI gains a
   job for each then.
-- **Benchmarks** arrive with the DSP chain in Phase 5.
+- **Benchmarks** arrive with the DSP chain in Phase 4.
 - **Device sinks on Linux** cannot be exercised in CI and need a real machine.
 - **Coverage on macOS-only code** is not measured: the coverage job runs on Linux.
