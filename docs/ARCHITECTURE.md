@@ -271,7 +271,7 @@ Versions are chosen when each dependency is first used, not here.
 
 | Target | Notes |
 | --- | --- |
-| `aarch64-apple-darwin` | Minimum macOS 14 (Sonoma) |
+| `aarch64-apple-darwin` | Minimum macOS 15 (Sequoia), set by `MACOSX_DEPLOYMENT_TARGET` in `.cargo/config.toml` and built in CI on that version |
 | `x86_64-unknown-linux-gnu` | Any distribution with PipeWire |
 | `aarch64-unknown-linux-gnu` | Same |
 

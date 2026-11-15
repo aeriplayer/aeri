@@ -52,7 +52,7 @@ Install the tools once with `cargo xtask install-tools`.
 ## Standards
 
 - **Mutation testing is the measure of test quality, not coverage.** Coverage says a line ran; a surviving mutant says no test would notice if that line were wrong. Every mutant in changed code must be caught, or explicitly justified in `.cargo/mutants.toml` with a reason.
-- **Coverage is a floor, not a target.** The gate is 85% of lines. Do not write tests to move the number; write them to pin behaviour, and let the number follow.
+- **Coverage is a floor, not a target.** The gate is 85% of lines across the workspace, and 100% for crates that are pure logic with no I/O (`aeri-core`, later `aeri-script`), where every line is reachable from a test. Do not write tests to move the number; write them to pin behaviour, and let the number follow.
 - **No flaky tests.** No retries, no sleeps as synchronisation, no dependence on test order or wall-clock time. A test that fails one run in a hundred is failing.
 - **A bug fix starts with a failing test** that reproduces it.
 - **Property tests commit their regressions.** `proptest` writes failing cases to `proptest-regressions/`; those files are checked in.

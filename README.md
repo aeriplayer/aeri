@@ -102,7 +102,7 @@ docs(adr): record ring buffer sizing rationale
 
 ## Testing
 
-- Unit tests in `#[cfg(test)] mod tests` beside the code; cross-module behaviour in each crate's `tests/`.
+- Unit tests in `#[cfg(test)] mod tests` beside the code; cross-module behaviour in each crate's `tests/`. Files in `tests/` wrap their tests in `#[cfg(test)] mod tests` too; a lint requires it.
 - `aeri-engine` is tested against `FakeSink`, never a real device. Device sinks are verified by hand and by unit tests of the callback body.
 - Fixtures are small committed files with the command that generated them beside them.
 
