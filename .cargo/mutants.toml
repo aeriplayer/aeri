@@ -1,8 +1,3 @@
-# cargo-mutants configuration. https://mutants.rs/
-#
-# Policy (docs/TESTING.md): every mutant in changed code is caught by a test. A
-# mutant that genuinely cannot matter is excluded here, by name, with the reason.
-
 test_tool             = "nextest"
 additional_cargo_args = ["--all-features", "--locked"]
 

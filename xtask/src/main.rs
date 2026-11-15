@@ -13,15 +13,14 @@ tasks:
 
 /// Cargo subcommands the hooks in `prek.toml` invoke, as `(crate, version)`.
 ///
-/// This is the only place their versions are written down: developers and CI both
-/// install from this list, so a hook never meets a different tool version in CI
-/// than it did locally. They are built with the project's pinned toolchain, which
-/// is why they are not prek-managed (prek would run them under its own, newer one).
+/// The only place their versions are written down: developers and CI install from this
+/// list, so a hook never meets a different version in CI. They are not prek-managed
+/// because prek would build them with its own, newer toolchain rather than the pinned one.
 const TOOLS: &[(&str, &str)] = &[
-    ("cargo-nextest", "0.9.152"), // test runner
-    ("cargo-hack", "0.6.46"),     // every feature combination compiles
-    ("cargo-llvm-cov", "0.9.1"),  // coverage
-    ("cargo-mutants", "27.1.0"),  // mutation testing
+    ("cargo-nextest", "0.9.152"),
+    ("cargo-hack", "0.6.46"),
+    ("cargo-llvm-cov", "0.9.1"),
+    ("cargo-mutants", "27.1.0"),
 ];
 
 fn main() -> Result<()> {
@@ -37,9 +36,8 @@ fn main() -> Result<()> {
 
 /// Installs the prek shims for every hook type listed in `prek.toml`.
 fn install_hooks() -> Result<()> {
-    // Earlier clones pointed `core.hooksPath` at `.githooks/`. Git would keep using
-    // that directory and never reach the shims, so clear it first. `--unset` exits
-    // non-zero when the key is already absent, which is the state we want.
+    // Older clones set `core.hooksPath`, which hides prek's shims. `--unset` exits
+    // non-zero when the key is absent, so the status is deliberately not checked.
     Command::new("git")
         .args(["config", "--local", "--unset", "core.hooksPath"])
         .status()
@@ -51,8 +49,7 @@ fn install_hooks() -> Result<()> {
 
 /// Installs every tool in [`TOOLS`] at its pinned version.
 ///
-/// Uses `cargo binstall` (prebuilt binaries) when it is available and falls back to
-/// compiling with `cargo install`, which is slower but needs nothing extra.
+/// Prefers `cargo binstall` (prebuilt binaries); falls back to `cargo install`.
 fn install_tools() -> Result<()> {
     let cargo = std::env::var("CARGO").unwrap_or_else(|_| "cargo".into());
     let have_binstall = Command::new(&cargo)
@@ -73,10 +70,8 @@ fn install_tools() -> Result<()> {
     Ok(())
 }
 
-/// Rebuilds `aeri-ipc`, whose build script generates the IPC code.
-///
-/// The build script declares `rerun-if-changed` on the `.proto` files, so editing
-/// one and running this task is the whole regeneration workflow.
+/// Rebuilds `aeri-ipc`, whose build script regenerates the IPC code when a `.proto`
+/// file has changed.
 fn gen_proto() -> Result<()> {
     let cargo = std::env::var("CARGO").unwrap_or_else(|_| "cargo".into());
     run(Command::new(cargo).args(["build", "--package", "aeri-ipc"]))

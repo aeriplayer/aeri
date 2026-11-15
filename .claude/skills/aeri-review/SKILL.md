@@ -101,5 +101,7 @@ Check each line. One violation is a defect regardless of how unlikely it looks.
 ### Documentation
 
 - Does rustdoc say what the item is *for* and document `# Errors` / `# Panics`?
-- Do comments explain why, not what?
+- Would deleting each comment cost a reader something the code, names, and rustdoc
+  cannot give (RUST_STYLE §12)? Flag narration, history, banners, multi-line
+  reasoning that belongs in rustdoc or `docs/`.
 - Are `CLAUDE.md` Status, the roadmap checklist, and affected docs updated?

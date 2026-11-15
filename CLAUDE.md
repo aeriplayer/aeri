@@ -23,6 +23,7 @@ Update this section whenever a step or phase completes.
 | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Pillars, crate graph, threading model, locked decisions, open decisions |
 | [`docs/RUST_STYLE.md`](docs/RUST_STYLE.md) | How Rust is written here, with reasons |
 | [`docs/TESTING.md`](docs/TESTING.md) | Which verification each kind of code requires, and the tools |
+| [`docs/TOOLING.md`](docs/TOOLING.md) | Why the hooks, CI, lints, and dependency policy are configured as they are |
 | [`docs/adr/`](docs/adr/README.md) | Every decision and why; when a new ADR is required |
 | [`docs/design/`](docs/design/) | The step-by-step brief for the current phase |
 | [`docs/ROADMAP.md`](docs/ROADMAP.md) | Phases and their checklists |
@@ -42,7 +43,10 @@ Update this section whenever a step or phase completes.
 6. **Finish** only when `prek run --all-files` and
    `prek run --all-files --stage pre-push` both pass, new behaviour has tests, public
    items have rustdoc, and Status and the roadmap checklist are updated.
-7. **Report honestly.** Say what was not verified, what was not run, and what you were
+7. **Keep comments rare.** Write one only if deleting it would let a reader make a
+   mistake they cannot see coming, in at most two lines (RUST_STYLE §12). Longer
+   explanations go in rustdoc, `docs/`, or an ADR.
+8. **Report honestly.** Say what was not verified, what was not run, and what you were
    unsure of. An unverified claim stated as fact is worse than a gap.
 
 ### Stop and ask the user before you

@@ -1,5 +1,3 @@
-# actionlint configuration.
-
 paths:
   .github/workflows/**/*.yml:
     ignore:

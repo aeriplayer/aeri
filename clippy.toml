@@ -1,10 +1,6 @@
-# Clippy configuration. Lint levels live in the workspace Cargo.toml.
-
-# Test code may unwrap, expect, print, and use dbg!: a panic is how a test fails.
 allow-unwrap-in-tests = true
 allow-expect-in-tests = true
 allow-dbg-in-tests    = true
 allow-print-in-tests  = true
 
-# Public APIs take at most this many positional arguments; beyond it, use a struct.
 too-many-arguments-threshold = 5

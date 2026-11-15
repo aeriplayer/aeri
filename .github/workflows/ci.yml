@@ -1,8 +1,5 @@
 name: CI
 
-# Every check is defined once, in prek.toml. This workflow only decides where
-# each group of hooks runs; it does not restate any command.
-
 on:
   push:
     branches: ["main"]
@@ -19,13 +16,10 @@ env:
   CARGO_INCREMENTAL: 0
   RUST_BACKTRACE: 1
   NEXTEST_PROFILE: ci
-  # Hooks that only make sense on a developer machine: CI builds `main` itself,
-  # and merge commits created by GitHub are not signed with a contributor key.
+  # Developer-machine guards; GitHub's merge commits carry no contributor signature.
   PREK_SKIP: no-commit-to-branch,check-signed-commit
 
 jobs:
-  # Everything that gives the same answer on every platform: hygiene, formatting,
-  # spelling, workflow security, unused dependencies, dependency policy.
   checks:
     name: checks
     runs-on: ubuntu-24.04
@@ -46,8 +40,7 @@ jobs:
       - name: Push-stage hooks
         run: prek run --all-files --stage pre-push --no-group target
 
-  # Hooks in the `target` group — clippy, tests, docs, feature powerset — compile
-  # `cfg(target_os)` code, so they run once per supported platform.
+  # `cfg(target_os)` code makes these results differ per platform.
   target:
     name: ${{ matrix.target }}
     runs-on: ${{ matrix.runner }}
@@ -80,8 +73,6 @@ jobs:
       - name: Tests, doctests, rustdoc, feature powerset
         run: prek run --all-files --stage pre-push --group target
 
-  # Line coverage with a floor. See docs/TESTING.md: the floor is a tripwire,
-  # not a goal.
   coverage:
     name: coverage
     runs-on: ubuntu-24.04
@@ -100,8 +91,6 @@ jobs:
       - name: cargo llvm-cov
         run: prek run coverage --all-files --stage manual
 
-  # Mutation testing of the lines this pull request changes: every mutant must be
-  # caught by a test.
   mutants:
     name: mutants
     if: github.event_name == 'pull_request'
@@ -124,7 +113,6 @@ jobs:
       - name: cargo mutants (changed lines)
         run: prek run mutants --all-files --stage manual
 
-  # Miri interprets the tests and reports undefined behaviour in `unsafe` code.
   miri:
     name: miri
     runs-on: ubuntu-24.04

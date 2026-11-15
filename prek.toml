@@ -1,31 +1,12 @@
 #:schema https://www.schemastore.org/prek.json
-#
-# Git hooks for aeri, run by prek (https://prek.j178.dev).
-#
-#   cargo xtask install-hooks      install the shims (once per clone)
-#   prek run --all-files           run the commit-time hooks on the whole tree
-#   prek run --all-files --stage pre-push
-#   prek update                    move every pinned hook to its latest release
-#
-# This file is the single definition of "passes checks". CI runs it rather than
-# restating the commands, so a green hook and a green CI cannot disagree.
-#
-# Stages:
-#   commit-msg   the message itself: Conventional Commits, forbidden trailers
-#   pre-commit   fast, on staged files: hygiene, formatting, lints, clippy
-#   pre-push     slow, on the whole workspace: tests, docs, dependency policy
+# Rationale for stages, priorities and each hook: docs/TOOLING.md.
 
 minimum_prek_version       = "0.5.10"
 default_install_hook_types = ["pre-commit", "commit-msg", "pre-push"]
 default_stages             = ["pre-commit"]
 
-# Licence texts are kept byte-for-byte as published.
 exclude = '^LICENSE-'
 
-# Hooks run in ascending priority; hooks sharing a priority run concurrently.
-# Anything that rewrites files gets a priority of its own, because two fixers
-# touching one file at once is undefined. Cargo hooks are serialised too: they
-# would only queue on the build-directory lock.
 [priorities]
 fix-whitespace = 0
 fix-eof        = 1
@@ -44,9 +25,6 @@ features       = 33
 deny           = 34
 manual         = 40
 
-# `prek update` pins to commit SHAs (a tag can be moved; a SHA cannot) and holds
-# back anything published in the last week, so a compromised release has time to
-# be noticed before it reaches this repository.
 [update]
 freeze        = true
 cooldown_days = 7
@@ -54,20 +32,16 @@ cooldown_days = 7
 [update.repos."https://github.com/crate-ci/typos"]
 include_tags = "v*" # the repository also tags its dictionaries
 
-# ── Commit message ───────────────────────────────────────────────────────────
-
 [[repos]]
 repo = "https://github.com/crate-ci/committed"
 rev = "02af07ed1d11ad69a96ab75f08c9831a4e2c00da" # frozen: v1.1.12
 hooks = [
-    # Conventional Commits; rules live in committed.toml.
     { id = "committed" },
 ]
 
 [[repos]]
 repo = "builtin"
 hooks = [
-    # Commits carry no AI attribution.
     { id = "check-commit-trailers", stages = [
         "commit-msg",
     ], args = [
@@ -75,8 +49,6 @@ hooks = [
         "--deny=Generated-by",
     ] },
 ]
-
-# ── Repository hygiene (built into prek; no network, no toolchain) ───────────
 
 [[repos]]
 repo = "builtin"
@@ -103,20 +75,15 @@ hooks = [
     { id = "check-vcs-permalinks", priority = "check" },
 ]
 
-# prek checking its own configuration: every `exclude` must exclude something.
-# (`check-hooks-apply` is deliberately absent: several hooks above are guards
-# for things the repository does not contain yet, such as symlinks.)
+# `check-hooks-apply` is omitted on purpose: some guards cover files not yet present.
 [[repos]]
 repo  = "meta"
 hooks = [{ id = "check-useless-excludes", priority = "check" }]
-
-# ── Prose and configuration ──────────────────────────────────────────────────
 
 [[repos]]
 repo = "https://github.com/crate-ci/typos"
 rev = "276087d9a4f06398b3e04825487805e2d7375888" # frozen: v1.52.2
 hooks = [
-    # Spell-checks code, comments, and docs. Exceptions go in _typos.toml.
     { id = "typos", priority = "fix-typos" },
 ]
 
@@ -124,7 +91,6 @@ hooks = [
 repo = "https://github.com/ComPWA/taplo-pre-commit"
 rev = "ade0f95ddcf661c697d4670d2cfcbe95d0048a0a" # frozen: v0.9.3
 hooks = [
-    # TOML formatting. Configured in taplo.toml.
     { id = "taplo-format", priority = "fix-toml" },
 ]
 
@@ -132,18 +98,14 @@ hooks = [
 repo = "https://github.com/rvben/rumdl-pre-commit"
 rev = "df5a947a3af0dba56640e644c6b9316184749168" # frozen: v0.3.4
 hooks = [
-    # Markdown lint. Configured in .rumdl.toml.
     { id = "rumdl-fmt", priority = "fix-markdown" },
     { id = "rumdl-check", priority = "check" },
 ]
-
-# ── GitHub Actions ───────────────────────────────────────────────────────────
 
 [[repos]]
 repo = "https://github.com/rhysd/actionlint"
 rev = "914e7df21a07ef503a81201c76d2b11c789d3fca" # frozen: v1.7.12
 hooks = [
-    # Workflow syntax, expression types, and runner labels.
     { id = "actionlint", priority = "check" },
 ]
 
@@ -151,17 +113,8 @@ hooks = [
 repo = "https://github.com/zizmorcore/zizmor-pre-commit"
 rev = "06a39750ec31860bb44f2acf67182c40016cd1e7" # frozen: v1.32.0
 hooks = [
-    # Workflow security: unpinned actions, over-broad permissions, injection.
     { id = "zizmor", priority = "check" },
 ]
-
-# ── Rust ─────────────────────────────────────────────────────────────────────
-#
-# `language = "system"` runs the cargo that rust-toolchain.toml selects, so
-# hooks, CI, and `cargo build` all use one compiler. Hooks in the `target`
-# group give different answers per platform (the audio backends are
-# `cfg(target_os)`), so CI runs that group on every target and everything else
-# once.
 
 [[repos]]
 repo = "local"
@@ -193,11 +146,9 @@ groups = ["target"]
 priority = "clippy"
 
 [[repos.hooks]]
-id       = "cargo-nextest"
-name     = "cargo nextest"
-language = "system"
-# nextest runs each test in its own process, kills hung tests, and never retries
-# (.config/nextest.toml). `--no-tests=pass` only matters while crates are empty.
+id             = "cargo-nextest"
+name           = "cargo nextest"
+language       = "system"
 entry          = "cargo nextest run --workspace --all-features --locked --no-tests=pass"
 always_run     = true
 pass_filenames = false
@@ -206,10 +157,9 @@ groups         = ["target"]
 priority       = "test"
 
 [[repos.hooks]]
-id       = "cargo-doctest"
-name     = "cargo test --doc"
-language = "system"
-# nextest does not run documentation examples; this does.
+id             = "cargo-doctest"
+name           = "cargo test --doc"
+language       = "system"
 entry          = "cargo test --doc --workspace --all-features --locked"
 always_run     = true
 pass_filenames = false
@@ -230,11 +180,9 @@ groups         = ["target"]
 priority       = "doc"
 
 [[repos.hooks]]
-id       = "cargo-hack"
-name     = "cargo hack (feature powerset)"
-language = "system"
-# Every combination of cargo features must compile on its own, so a feature-gated
-# boundary such as aeri-ipc's `local` (ADR 0003) cannot rot unnoticed.
+id             = "cargo-hack"
+name           = "cargo hack (feature powerset)"
+language       = "system"
 entry          = "cargo hack check --workspace --feature-powerset --locked"
 always_run     = true
 pass_filenames = false
@@ -242,14 +190,10 @@ stages         = ["pre-push"]
 groups         = ["target"]
 priority       = "features"
 
-# Manual-stage hooks: too slow for every push, run by CI on every pull request and
-# on demand with `prek run <id> --stage manual --all-files`. See docs/TESTING.md.
-
 [[repos.hooks]]
-id       = "coverage"
-name     = "coverage (cargo llvm-cov)"
-language = "system"
-# Excluded: build automation and build scripts. Everything else counts.
+id             = "coverage"
+name           = "coverage (cargo llvm-cov)"
+language       = "system"
 entry          = "cargo llvm-cov nextest --workspace --all-features --locked --no-tests=pass --ignore-filename-regex '(^|/)(xtask/|build\\.rs$)' --fail-under-lines 85"
 always_run     = true
 pass_filenames = false
@@ -257,12 +201,10 @@ stages         = ["manual"]
 priority       = "manual"
 
 [[repos.hooks]]
-id       = "mutants"
-name     = "mutation testing (cargo mutants)"
+id = "mutants"
+name = "mutation testing (cargo mutants)"
 language = "system"
-shell    = "sh"
-# Mutates only the lines that differ from the base branch, then requires the test
-# suite to notice every mutation. Configured in .cargo/mutants.toml.
+shell = "sh"
 entry = """
 mkdir -p target
 git diff "${MUTANTS_BASE:-origin/main}"...HEAD > target/mutants.diff
@@ -274,11 +216,9 @@ stages = ["manual"]
 priority = "manual"
 
 [[repos.hooks]]
-id       = "miri"
-name     = "miri"
-language = "system"
-# Needs `rustup toolchain install nightly --component miri`. Tests that cannot
-# run under Miri (FFI, real I/O) opt out with `#[cfg_attr(miri, ignore)]`.
+id             = "miri"
+name           = "miri"
+language       = "system"
 entry          = "cargo +nightly miri test --workspace --all-features"
 always_run     = true
 pass_filenames = false
@@ -289,7 +229,6 @@ priority       = "manual"
 repo = "https://github.com/bnjbvr/cargo-machete"
 rev = "a84eadc0a20e522e37a502609e97a7ce30c998ed" # frozen: v0.10.0
 hooks = [
-    # Dependencies declared but never used.
     { id = "cargo-machete", priority = "check", files = { glob = [
         "**/*.rs",
         "**/Cargo.toml",
@@ -300,8 +239,6 @@ hooks = [
 repo = "https://github.com/EmbarkStudios/cargo-deny"
 rev = "bca0dde53651ee946720e4540b5ce2610bec8f06" # frozen: 0.20.2
 hooks = [
-    # Advisories, licences, duplicate versions, and registries. Policy lives in
-    # deny.toml. Runs at push: it reads the advisory database over the network.
     { id = "cargo-deny", args = [
         "--all-features",
         "check",
@@ -310,11 +247,8 @@ hooks = [
     ], priority = "deny" },
 ]
 
-# ── Push ─────────────────────────────────────────────────────────────────────
-
 [[repos]]
 repo = "builtin"
 hooks = [
-    # Every pushed commit is signed.
     { id = "check-signed-commit", stages = ["pre-push"] },
 ]
