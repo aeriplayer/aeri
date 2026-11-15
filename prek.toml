@@ -190,14 +190,18 @@ groups         = ["target"]
 priority       = "features"
 
 [[repos.hooks]]
-id             = "coverage"
-name           = "coverage (cargo llvm-cov)"
-language       = "system"
-entry          = "cargo llvm-cov nextest --workspace --all-features --locked --no-tests=pass --ignore-filename-regex '(^|/)(xtask/|build\\.rs$)' --fail-under-lines 85"
-always_run     = true
+id = "coverage"
+name = "coverage (cargo llvm-cov)"
+language = "system"
+shell = "sh"
+entry = """
+cargo llvm-cov nextest --workspace --all-features --locked --no-tests=pass --no-report &&
+cargo llvm-cov report --ignore-filename-regex '(^|/)(xtask/|build\\.rs$)' --fail-under-lines 85
+"""
+always_run = true
 pass_filenames = false
-stages         = ["manual"]
-priority       = "manual"
+stages = ["manual"]
+priority = "manual"
 
 [[repos.hooks]]
 id = "mutants"

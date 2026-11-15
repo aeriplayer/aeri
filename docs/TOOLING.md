@@ -38,7 +38,7 @@ Hooks run in ascending priority; hooks sharing a priority run concurrently. Anyt
 | `cargo-nextest` | One process per test, hung tests killed, no retries (`.config/nextest.toml`). `--no-tests=pass` only matters while crates are empty; remove it with the first test. |
 | `cargo-doctest` | nextest does not run documentation examples. |
 | `cargo-hack` | Every feature combination must compile alone, so a gated boundary such as `aeri-audio`'s `test-util` feature cannot rot unnoticed. |
-| `coverage` | Excludes `xtask/` and `build.rs`: build automation, not product code. The floor is a tripwire, not a goal ([`TESTING.md`](TESTING.md)). |
+| `coverage` | Runs the tests once, then reports per floor: the workspace, and each pure-logic crate at 100% (`--package`). A crate with no code fails a 100% report, so each crate's line is added with its first code. Excludes `xtask/` and `build.rs`: build automation, not product code. The floor is a tripwire, not a goal ([`TESTING.md`](TESTING.md)). |
 | `mutants` | Mutates only the lines that differ from the base branch, then requires the tests to notice every mutation. Excluded mutants are named in `.cargo/mutants.toml` with the reason. |
 | `miri` | Needs `rustup toolchain install nightly --component miri`. Tests that cannot run under Miri (FFI, real I/O) opt out with `#[cfg_attr(miri, ignore)]`. |
 | `cargo-deny` | Runs at push because it reads the advisory database over the network. |
@@ -85,6 +85,8 @@ Every rule in `README.md` that a compiler can check is checked in `[workspace.li
 ## Toolchain
 
 `rust-toolchain.toml` pins an exact stable so CI cannot break on an unrelated release. Bump it in its own commit with every check green. `llvm-tools` is there for `cargo-llvm-cov`.
+
+The minimum macOS version is `MACOSX_DEPLOYMENT_TARGET` in `.cargo/config.toml`, which cargo passes to every compile and link. The macOS CI and release runners are pinned to that same version, so the floor is what gets tested. Raise both together.
 
 ## Release workflow
 
