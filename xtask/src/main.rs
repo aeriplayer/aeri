@@ -68,9 +68,26 @@ fn install_tools(requested: &[String]) -> Result<()> {
         } else {
             command.args(["install", "--locked", &spec]);
         }
-        run(&mut command).with_context(|| format!("could not install {spec}"))?;
+        run_with_retries(&mut command, INSTALL_ATTEMPTS)
+            .with_context(|| format!("could not install {spec}"))?;
     }
     Ok(())
+}
+
+/// Release lookups on shared CI runners time out now and then; a second try usually works.
+const INSTALL_ATTEMPTS: u32 = 3;
+
+/// Runs `command` up to `attempts` times, pausing between tries, and returns the last error.
+fn run_with_retries(command: &mut Command, attempts: u32) -> Result<()> {
+    let mut result = run(command);
+    for _ in 1..attempts {
+        if result.is_ok() {
+            break;
+        }
+        std::thread::sleep(std::time::Duration::from_secs(5));
+        result = run(command);
+    }
+    result
 }
 
 /// Picks the entries of [`TOOLS`] named in `requested`, or all of them when it is empty.

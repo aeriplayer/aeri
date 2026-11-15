@@ -46,4 +46,9 @@ runs:
       shell: bash
       env:
         TOOLS: ${{ inputs.tools }}
+        # Fail instead of silently compiling for minutes; xtask retries the lookup.
+        BINSTALL_DISABLE_STRATEGIES: compile
+        BINSTALL_MAXIMUM_RESOLUTION_TIMEOUT: "10"
+        # Authenticated GitHub API requests are not throttled like anonymous ones.
+        GITHUB_TOKEN: ${{ github.token }}
       run: cargo xtask install-tools $TOOLS
