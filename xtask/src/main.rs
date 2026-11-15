@@ -8,6 +8,7 @@ const USAGE: &str = "\
 tasks:
   install-hooks  install the Git hooks defined in prek.toml (requires prek)
   install-tools  install the cargo subcommands the hooks and CI call
+                 (all of them, or only the names given: `install-tools cargo-nextest`)
   release        not implemented yet; use `cargo dist build`";
 
 /// Cargo subcommands the hooks in `prek.toml` invoke, as `(crate, version)`.
@@ -23,9 +24,10 @@ const TOOLS: &[(&str, &str)] = &[
 ];
 
 fn main() -> Result<()> {
-    match std::env::args().nth(1).as_deref() {
+    let mut args = std::env::args().skip(1);
+    match args.next().as_deref() {
         Some("install-hooks") => install_hooks(),
-        Some("install-tools") => install_tools(),
+        Some("install-tools") => install_tools(&args.collect::<Vec<_>>()),
         Some("release") => bail!("`release` is not implemented yet; run `cargo dist build`"),
         Some(other) => bail!("unknown task `{other}`\n\n{USAGE}"),
         None => bail!("no task given\n\n{USAGE}"),
@@ -45,17 +47,20 @@ fn install_hooks() -> Result<()> {
         .context("could not install hooks; is prek installed? (`brew install prek`)")
 }
 
-/// Installs every tool in [`TOOLS`] at its pinned version.
+/// Installs the named tools from [`TOOLS`] at their pinned versions, or all of them when
+/// `requested` is empty.
 ///
 /// Prefers `cargo binstall` (prebuilt binaries); falls back to `cargo install`.
-fn install_tools() -> Result<()> {
+fn install_tools(requested: &[String]) -> Result<()> {
+    let selected = select_tools(requested)?;
+
     let cargo = std::env::var("CARGO").unwrap_or_else(|_| "cargo".into());
     let have_binstall = Command::new(&cargo)
         .args(["binstall", "-V"])
         .output()
         .is_ok_and(|output| output.status.success());
 
-    for (name, version) in TOOLS {
+    for (name, version) in selected {
         let spec = format!("{name}@{version}");
         let mut command = Command::new(&cargo);
         if have_binstall {
@@ -68,6 +73,21 @@ fn install_tools() -> Result<()> {
     Ok(())
 }
 
+/// Picks the entries of [`TOOLS`] named in `requested`, or all of them when it is empty.
+fn select_tools(requested: &[String]) -> Result<Vec<(&'static str, &'static str)>> {
+    if let Some(unknown) = requested
+        .iter()
+        .find(|name| !TOOLS.iter().any(|(tool, _)| tool == name))
+    {
+        bail!("unknown tool `{unknown}`; known tools are in `TOOLS` in xtask/src/main.rs");
+    }
+    Ok(TOOLS
+        .iter()
+        .copied()
+        .filter(|(name, _)| requested.is_empty() || requested.iter().any(|r| r == name))
+        .collect())
+}
+
 /// Runs `command` to completion, turning a non-zero exit into an error.
 fn run(command: &mut Command) -> Result<()> {
     let program = command.get_program().to_string_lossy().into_owned();
@@ -76,4 +96,28 @@ fn run(command: &mut Command) -> Result<()> {
         .with_context(|| format!("failed to start `{program}`"))?;
     ensure!(status.success(), "`{program}` exited with {status}");
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn no_names_selects_every_tool() {
+        assert_eq!(select_tools(&[]).unwrap().len(), TOOLS.len());
+    }
+
+    #[test]
+    fn names_select_only_those_tools() {
+        let picked = select_tools(&["cargo-hack".into()]).unwrap();
+        assert_eq!(
+            picked.iter().map(|(n, _)| *n).collect::<Vec<_>>(),
+            ["cargo-hack"]
+        );
+    }
+
+    #[test]
+    fn unknown_name_is_an_error() {
+        assert!(select_tools(&["cargo-nope".into()]).is_err());
+    }
 }

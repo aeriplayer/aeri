@@ -5,9 +5,11 @@ description: >-
 
 inputs:
   tools:
-    description: Install the cargo subcommands listed in xtask (nextest, hack, llvm-cov, mutants)
+    description: >-
+      Space-separated cargo subcommands from xtask to install (for example
+      "cargo-nextest cargo-hack"); empty installs none
     required: false
-    default: "false"
+    default: ""
   cache-key:
     description: Distinguishes caches of jobs that build differently
     required: true
@@ -34,12 +36,14 @@ runs:
         install-only: true
 
     # Lets `xtask install-tools` fetch prebuilt binaries instead of compiling.
-    - if: inputs.tools == 'true'
+    - if: inputs.tools != ''
       uses: taiki-e/install-action@4a76afe23f9e08d2d9550fb56e556444e8611d21 # v2.90.4
       with:
         tool: cargo-binstall
 
     - name: Install cargo tools (versions pinned in xtask)
-      if: inputs.tools == 'true'
+      if: inputs.tools != ''
       shell: bash
-      run: cargo xtask install-tools
+      env:
+        TOOLS: ${{ inputs.tools }}
+      run: cargo xtask install-tools $TOOLS
