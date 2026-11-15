@@ -1,5 +1,10 @@
+[workspace]
+members = ["cargo:."]
+
 [dist]
 cargo-dist-version = "0.32.0"
+# release.yml is maintained by hand; docs/TOOLING.md.
+allow-dirty = ["ci"]
 installers = ["shell"]
 targets = [
     "aarch64-apple-darwin",
