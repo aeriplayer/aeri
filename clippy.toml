@@ -4,3 +4,31 @@ allow-dbg-in-tests    = true
 allow-print-in-tests  = true
 
 too-many-arguments-threshold = 5
+
+disallowed-methods = [
+    { path = "std::thread::spawn", reason = "name the thread: std::thread::Builder::new().name(…) (RUST_STYLE §5)" },
+    { path = "std::fs::canonicalize", reason = "use fs_err, whose errors name the path (ADR 0012)" },
+    { path = "std::fs::copy", reason = "use fs_err, whose errors name the path (ADR 0012)" },
+    { path = "std::fs::create_dir", reason = "use fs_err, whose errors name the path (ADR 0012)" },
+    { path = "std::fs::create_dir_all", reason = "use fs_err, whose errors name the path (ADR 0012)" },
+    { path = "std::fs::hard_link", reason = "use fs_err, whose errors name the path (ADR 0012)" },
+    { path = "std::fs::metadata", reason = "use fs_err, whose errors name the path (ADR 0012)" },
+    { path = "std::fs::read", reason = "use fs_err, whose errors name the path (ADR 0012)" },
+    { path = "std::fs::read_dir", reason = "use fs_err, whose errors name the path (ADR 0012)" },
+    { path = "std::fs::read_link", reason = "use fs_err, whose errors name the path (ADR 0012)" },
+    { path = "std::fs::read_to_string", reason = "use fs_err, whose errors name the path (ADR 0012)" },
+    { path = "std::fs::remove_dir", reason = "use fs_err, whose errors name the path (ADR 0012)" },
+    { path = "std::fs::remove_dir_all", reason = "use fs_err, whose errors name the path (ADR 0012)" },
+    { path = "std::fs::remove_file", reason = "use fs_err, whose errors name the path (ADR 0012)" },
+    { path = "std::fs::rename", reason = "use fs_err, whose errors name the path (ADR 0012)" },
+    { path = "std::fs::set_permissions", reason = "use fs_err, whose errors name the path (ADR 0012)" },
+    { path = "std::fs::symlink_metadata", reason = "use fs_err, whose errors name the path (ADR 0012)" },
+    { path = "std::fs::write", reason = "use fs_err, whose errors name the path (ADR 0012)" },
+]
+
+disallowed-types = [
+    { path = "std::fs::DirEntry", reason = "use fs_err, whose errors name the path (ADR 0012)" },
+    { path = "std::fs::File", reason = "use fs_err, whose errors name the path (ADR 0012)" },
+    { path = "std::fs::OpenOptions", reason = "use fs_err, whose errors name the path (ADR 0012)" },
+    { path = "std::fs::ReadDir", reason = "use fs_err, whose errors name the path (ADR 0012)" },
+]

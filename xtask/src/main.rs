@@ -1,5 +1,7 @@
 //! Repository automation, run as `cargo xtask <task>`.
 
+pub mod deps;
+
 use std::process::Command;
 
 use anyhow::{Context as _, Result, bail, ensure};
@@ -9,7 +11,9 @@ tasks:
   install-hooks  install the Git hooks defined in prek.toml (requires prek)
   install-tools  install the cargo subcommands the hooks and CI call
                  (all of them, or only the names given: `install-tools cargo-nextest`)
-  release        not implemented yet; use `cargo dist build`";
+  check-deps     dependency policy cargo-deny cannot express: explicit features,
+                 no stale build-script permissions
+  release        not implemented yet; use `dist build`";
 
 /// Cargo subcommands the hooks in `prek.toml` invoke, as `(crate, version)`.
 ///
@@ -21,6 +25,7 @@ const TOOLS: &[(&str, &str)] = &[
     ("cargo-hack", "0.6.46"),
     ("cargo-llvm-cov", "0.9.1"),
     ("cargo-mutants", "27.1.0"),
+    ("cargo-shear", "1.14.0"),
 ];
 
 fn main() -> Result<()> {
@@ -28,7 +33,8 @@ fn main() -> Result<()> {
     match args.next().as_deref() {
         Some("install-hooks") => install_hooks(),
         Some("install-tools") => install_tools(&args.collect::<Vec<_>>()),
-        Some("release") => bail!("`release` is not implemented yet; run `cargo dist build`"),
+        Some("check-deps") => deps::check(),
+        Some("release") => bail!("`release` is not implemented yet; run `dist build`"),
         Some(other) => bail!("unknown task `{other}`\n\n{USAGE}"),
         None => bail!("no task given\n\n{USAGE}"),
     }
