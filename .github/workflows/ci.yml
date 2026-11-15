@@ -64,7 +64,7 @@ jobs:
 
       - uses: $/.github/actions/setup
         with:
-          tools: "true"
+          tools: "cargo-nextest cargo-hack"
           cache-key: ${{ matrix.target }}
 
       - name: cargo clippy
@@ -85,7 +85,7 @@ jobs:
 
       - uses: $/.github/actions/setup
         with:
-          tools: "true"
+          tools: "cargo-nextest cargo-llvm-cov"
           cache-key: coverage
 
       - name: cargo llvm-cov
@@ -107,7 +107,7 @@ jobs:
 
       - uses: $/.github/actions/setup
         with:
-          tools: "true"
+          tools: "cargo-nextest cargo-mutants"
           cache-key: mutants
 
       - name: cargo mutants (changed lines)
