@@ -1,6 +1,6 @@
 # aeri — Testing and verification
 
-How aeri earns confidence in its code. Every tool here runs from `prek.toml`, locally and in CI, so there is one definition of each check.
+How aeri earns confidence in its code. Every tool here runs from `.pre-commit-config.yaml`, locally and in CI, so there is one definition of each check.
 
 ## The toolchain, for someone who knows Python's
 

@@ -31,7 +31,7 @@ Read the architecture, the current brief, and the ADRs it cites before writing c
 # Once per clone
 brew install prek
 cargo xtask install-hooks
-cargo xtask install-tools   # nextest, cargo-hack, llvm-cov, cargo-mutants, cargo-shear
+cargo xtask install-tools   # every tool in .config/cargo-tools.toml
 
 # Commit-stage checks over the whole tree (hygiene, fmt, lints, clippy)
 prek run --all-files
