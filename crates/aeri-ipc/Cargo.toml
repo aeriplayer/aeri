@@ -3,6 +3,8 @@ name                   = "aeri-ipc"
 version.workspace      = true
 edition.workspace      = true
 license.workspace      = true
+repository.workspace   = true
+authors.workspace      = true
 rust-version.workspace = true
 publish.workspace      = true
 description            = "Connect-RPC service, Player trait, LocalPlayer and RemotePlayer implementations"
@@ -13,17 +15,3 @@ workspace = true
 [build-dependencies]
 buffa-build.workspace      = true
 connectrpc-build.workspace = true
-
-[features]
-default = ["local"]
-# In-process `LocalPlayer`, which owns an engine. Remote-only clients disable this to
-# avoid linking the audio backends, symphonia, and SQLite. See docs/adr/0003-ipc-local-feature.md.
-local = ["dep:aeri-engine"]
-
-[dependencies]
-# Declared ahead of `LocalPlayer` so the feature boundary from ADR 0003 is checked by CI
-# (`--no-default-features` must build) from the start.
-aeri-engine = { workspace = true, optional = true }
-
-[package.metadata.cargo-machete]
-ignored = ["aeri-engine"] # see the note on the dependency above

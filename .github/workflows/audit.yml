@@ -1,0 +1,36 @@
+name: Audit
+
+# A security advisory can be published against a dependency on a day when nobody
+# pushes. This runs the dependency policy on a schedule so that is still noticed.
+
+on:
+  schedule:
+    - cron: "17 6 * * *" # daily, 06:17 UTC
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: true
+
+jobs:
+  cargo-deny:
+    name: cargo deny
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Rust toolchain
+        run: rustup toolchain install # reads rust-toolchain.toml
+
+      - uses: j178/prek-action@44924fe9ef4a6f88253c4b6b1bf11c689d3ce53d # v3.1.0
+        with:
+          install-only: true
+
+      - name: Advisories, licences, bans, sources
+        run: prek run cargo-deny --all-files --stage pre-push

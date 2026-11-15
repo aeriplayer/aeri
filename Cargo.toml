@@ -19,42 +19,99 @@ edition      = "2024"
 license      = "MIT OR Apache-2.0"
 repository   = "https://github.com/aeriplayer/aeri"
 authors      = ["Elliot Farmer Garcia"]
-rust-version = "1.95"
+rust-version = "1.100"
 # aeri ships as binaries, not as crates.io packages. This also lets cargo-deny tell
 # the workspace's own path dependencies apart from wildcard version requirements.
 publish = false
 
 [workspace.dependencies]
-# Internal
-aeri-core   = { path = "crates/aeri-core" }
-aeri-audio  = { path = "crates/aeri-audio" }
-aeri-decode = { path = "crates/aeri-decode" }
-aeri-engine = { path = "crates/aeri-engine" }
-# default-features off so a `Player`-only consumer (aeri-platform, Phase 5) does not
-# pull in the engine; hosts that own an engine enable `local` explicitly (ADR 0003).
-aeri-ipc = { path = "crates/aeri-ipc", default-features = false }
+# Internal crates are listed here when the first crate depends on them, as
+# `aeri-core = { path = "crates/aeri-core" }`. Cargo rejects unused entries.
 
 # External dependencies are added when the first line of code needs them, at the
 # then-current version — cargo-machete fails the build on any that go unused. The
 # crates already chosen for later phases are recorded in docs/ARCHITECTURE.md.
 
 # IPC code generation (build-dependencies of aeri-ipc).
-# Keep these two on the same minor: connectrpc 0.8 requires `buffa ^0.8.1`, and
-# mixing in buffa 0.9 would generate types its service traits cannot accept.
-connectrpc-build = "0.8" # Tower service stubs from .proto
-buffa-build      = "0.8" # .proto → Rust types
+# Keep these two on the same minor: connectrpc-build generates code against one
+# specific buffa minor, and a mismatch produces types that do not fit together.
+connectrpc-build = "0.9" # Tower service stubs from .proto
+buffa-build      = "0.9" # .proto → Rust types
 
 # Error handling (binaries and xtask)
 anyhow = "1.0.104"
 
-# Workspace-wide lint configuration.
-# pedantic/nursery are at priority -1 so individual #[allow] overrides still work.
+# ── Lints ────────────────────────────────────────────────────────────────────
+#
+# Every rule in CLAUDE.md that a compiler can check is checked here, and CI runs
+# with `-D warnings`, so each `warn` below is a hard failure. To silence a lint
+# at one site use `#[expect(lint, reason = "...")]`, never `#[allow]`: `expect`
+# fails once the code no longer triggers the lint, so suppressions cannot go stale.
+
+[workspace.lints.cargo]
+# Cargo's own manifest lints: nothing declared in the workspace goes unused.
+unused_workspace_dependencies   = "deny"
+unused_workspace_package_fields = "deny"
+
 [workspace.lints.rust]
-unsafe_code = "deny"
+# `unsafe` is denied everywhere. aeri-audio opts in at the crate root, once, when
+# its first FFI call is written.
+unsafe_code            = "deny"
+unsafe_op_in_unsafe_fn = "deny"
+# Public items in library crates are documented.
+missing_docs = "warn"
+# Every public type can be printed while debugging.
+missing_debug_implementations = "warn"
+# `pub` means "part of the crate's API". Anything else is `pub(crate)` or private.
+unreachable_pub       = "warn"
+unnameable_types      = "warn"
+unused_qualifications = "warn"
+# A leftover `#[expect]` whose lint no longer fires is itself an error.
+unfulfilled_lint_expectations = "warn"
+
+[workspace.lints.rustdoc]
+broken_intra_doc_links  = "deny"
+private_intra_doc_links = "deny"
+bare_urls               = "warn"
 
 [workspace.lints.clippy]
+# pedantic/nursery sit at priority -1 so the individual levels below win.
 pedantic = { level = "warn", priority = -1 }
 nursery  = { level = "warn", priority = -1 }
 # Nursery lint: fires on functions that are incidentally const-able today but
 # would become breaking changes to un-const later. Not worth the churn.
 missing_const_for_fn = "allow"
+
+# No panicking shortcuts outside tests (clippy.toml exempts test code).
+# `expect("why this cannot fail")` remains allowed; `unwrap()` does not.
+unwrap_used   = "deny"
+get_unwrap    = "deny"
+todo          = "deny"
+unimplemented = "deny"
+dbg_macro     = "deny"
+# Logging is `tracing`. Binaries opt in to printing where output is the product.
+print_stdout = "deny"
+print_stderr = "deny"
+# Every `unsafe` block states the invariant it relies on, and holds one operation.
+undocumented_unsafe_blocks    = "deny"
+multiple_unsafe_ops_per_block = "deny"
+unnecessary_safety_comment    = "warn"
+unnecessary_safety_doc        = "warn"
+# Suppressions are `#[expect]` with a reason — see the note at the top.
+allow_attributes                = "deny"
+allow_attributes_without_reason = "deny"
+# `foo.rs` + `foo/`, never `foo/mod.rs`.
+mod_module_files = "deny"
+# Shared ownership is spelled `Arc::clone(&x)` so a cheap pointer copy is never
+# mistaken for a deep clone.
+clone_on_ref_ptr = "warn"
+# Import a trait only for its methods as `use Trait as _`.
+unused_trait_names = "warn"
+# Leaking is never the fix.
+mem_forget = "deny"
+# A float literal that cannot be represented exactly is a bug in audio code.
+lossy_float_literal = "warn"
+# An error type is named for what failed, not `Error` re-exported under an alias.
+error_impl_error = "warn"
+# Tests live in `#[cfg(test)] mod tests` or in `tests/`.
+tests_outside_test_module = "warn"
