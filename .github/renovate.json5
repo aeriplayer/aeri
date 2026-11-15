@@ -1,0 +1,127 @@
+// Rationale for each setting: docs/TOOLING.md.
+{
+  $schema: "https://docs.renovatebot.com/renovate-schema.json",
+  extends: [
+    "config:recommended",
+    "helpers:pinGitHubActionDigestsToSemver",
+    ":configMigration",
+    "abandonments:recommended",
+  ],
+  dependencyDashboard: true,
+  schedule: ["before 6am on monday"],
+
+  minimumReleaseAge: "7 days",
+  minimumReleaseAgeBehaviour: "timestamp-required",
+  internalChecksFilter: "strict",
+  prCreation: "immediate",
+  prHourlyLimit: 0,
+  prConcurrentLimit: 0,
+
+  rangeStrategy: "auto",
+  cargo: { rangeStrategy: "update-lockfile" },
+  lockFileMaintenance: { enabled: false },
+
+  semanticCommits: "enabled",
+  semanticCommitScope: "deps",
+  semanticCommitType: "build",
+
+  packageRules: [
+    {
+      description: "Pin references already in use at once; waiting leaves them mutable",
+      matchUpdateTypes: ["pinDigest"],
+      minimumReleaseAge: null,
+    },
+    {
+      description: "Runner images move only by deliberate choice",
+      matchManagers: ["github-actions"],
+      matchDatasources: ["github-runners"],
+      enabled: false,
+    },
+    {
+      description: "CI actions in one pull request",
+      matchManagers: ["github-actions"],
+      groupName: "github actions",
+      semanticCommitType: "ci",
+    },
+    {
+      description: "Compatible crate updates in one pull request; majors one by one",
+      matchManagers: ["cargo"],
+      matchUpdateTypes: ["minor", "patch"],
+      groupName: "compatible crates",
+    },
+    {
+      description: "The toolchain and the declared rust-version move together",
+      matchDepNames: ["rust"],
+      groupName: "rust toolchain",
+    },
+    {
+      description: "Hook revisions in prek.toml",
+      matchFileNames: ["prek.toml"],
+      groupName: "prek hooks",
+      semanticCommitType: "ci",
+    },
+    {
+      description: "typos also tags its dictionaries; follow releases only",
+      matchFileNames: ["prek.toml"],
+      matchPackageNames: ["crate-ci/typos"],
+      allowedVersions: "/^v\\d+\\.\\d+\\.\\d+$/",
+    },
+    {
+      description: "cargo-dist is named in the workflows and in dist-workspace.toml",
+      matchDepNames: ["axodotdev/cargo-dist"],
+      groupName: "cargo-dist",
+      semanticCommitType: "ci",
+    },
+  ],
+
+  customManagers: [
+    {
+      description: "Cargo tools pinned in xtask's TOOLS table",
+      customType: "regex",
+      managerFilePatterns: ["/^xtask/src/main\\.rs$/"],
+      matchStrings: ['\\("(?<depName>cargo-[a-z0-9-]+)", "(?<currentValue>[^"]+)"\\)'],
+      datasourceTemplate: "crate",
+    },
+    {
+      description: "The rust-version every crate inherits",
+      customType: "regex",
+      managerFilePatterns: ["/^Cargo\\.toml$/"],
+      matchStrings: ['rust-version\\s*=\\s*"(?<currentValue>\\d+\\.\\d+\\.\\d+)"'],
+      depNameTemplate: "rust",
+      datasourceTemplate: "rust-version",
+    },
+    {
+      description: "prek hook repositories, pinned to a commit with a `# frozen:` tag marker",
+      customType: "regex",
+      managerFilePatterns: ["/^prek\\.toml$/"],
+      matchStrings: [
+        'repo = "https://github\\.com/(?<depName>[^"]+)"\\s*\\nrev = "(?<currentDigest>[a-f0-9]{40})" # frozen: (?<currentValue>\\S+)',
+      ],
+      datasourceTemplate: "github-tags",
+    },
+    {
+      description: "cargo-dist installer URLs in the workflows",
+      customType: "regex",
+      managerFilePatterns: ["/^\\.github/workflows/.+\\.ya?ml$/"],
+      matchStrings: ["axodotdev/cargo-dist/releases/download/v(?<currentValue>[^/]+)/"],
+      depNameTemplate: "axodotdev/cargo-dist",
+      datasourceTemplate: "github-releases",
+      extractVersionTemplate: "^v(?<version>.+)$",
+    },
+    {
+      description: "cargo-dist version dist expects in CI",
+      customType: "regex",
+      managerFilePatterns: ["/^dist-workspace\\.toml$/"],
+      matchStrings: ['cargo-dist-version = "(?<currentValue>[^"]+)"'],
+      depNameTemplate: "axodotdev/cargo-dist",
+      datasourceTemplate: "github-releases",
+      extractVersionTemplate: "^v(?<version>.+)$",
+    },
+  ],
+
+  vulnerabilityAlerts: {
+    enabled: true,
+    labels: ["security"],
+    minimumReleaseAge: null,
+  },
+}
