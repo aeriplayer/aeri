@@ -5,7 +5,7 @@ Why the repository's configuration files are shaped the way they are. The files 
 
 ## One definition of "passes checks"
 
-Every check is defined once, in `prek.toml`. CI runs the same hooks rather than restating their commands, so a green hook and a green CI cannot disagree. CI only decides *where* each group runs:
+Every check is defined once, in `.pre-commit-config.yaml`. The file is YAML, not `prek.toml`, because Renovate's pre-commit manager reads that format and updates its `# frozen:` pins natively; prek's extensions (priorities, groups, `builtin` hooks, `update`) work in either format. CI runs the same hooks rather than restating their commands, so a green hook and a green CI cannot disagree. CI only decides *where* each group runs:
 
 - **Commit-msg stage:** the message itself (Conventional Commits, forbidden trailers).
 - **Pre-commit stage:** fast, on staged files: hygiene, formatting, lints, clippy.
@@ -101,7 +101,7 @@ Every rule in `README.md` that a compiler can check is checked in `[workspace.li
 
 `clippy.toml` bans what a lint cannot express: `std::thread::spawn`, because long-lived threads are named (RUST_STYLE §5), and the `std::fs` functions and types, because file access goes through `fs_err` ([ADR 0012](adr/0012-filesystem-through-fs-err.md)). Each ban's message says what to use instead. Clippy reads the nearest `clippy.toml` *instead of* the root one, not merged with it: a per-crate file must repeat these entries.
 
-`pedantic` and `nursery` sit at priority −1 so the individual levels win. `missing_const_for_fn` is allowed: it fires on functions that are incidentally const-able today but would become breaking changes to un-const later.
+`pedantic` and `nursery` sit at priority −1 so the individual levels win. `missing_const_for_fn` is allowed: it fires on functions that are incidentally const-able today but would become breaking changes to un-const later. `redundant_pub_crate` is allowed because it contradicts `unreachable_pub`: inside a private module one rejects `pub(crate)` and the other rejects `pub`, so with both on an item used by a sibling module has no legal visibility. `unreachable_pub` is the one the visibility rule above depends on.
 
 `clippy.toml` sets `too-many-arguments-threshold = 5`: beyond five positional arguments, use a struct.
 
@@ -125,7 +125,7 @@ The minimum macOS version is `MACOSX_DEPLOYMENT_TARGET` in `.cargo/config.toml`,
 
 ## Release workflow
 
-`.github/workflows/release.yml` is maintained by hand rather than generated, as uv's is, so it can pin actions by SHA and pass zizmor. `allow-dirty = ["ci"]` in `dist-workspace.toml` tells dist not to compare it with its own template; the `release plan` CI job runs `dist plan` instead. The cargo-dist installer provides a binary named `dist`, not a cargo subcommand, so the workflows call `dist plan`, `dist build` and `dist host`. It needs these repository secrets:
+`.github/workflows/release.yml` is maintained by hand rather than generated, as uv's is, so it can pin actions by SHA and pass zizmor. `allow-dirty = ["ci"]` in `dist-workspace.toml` tells dist not to compare it with its own template; the `release plan` CI job runs `dist plan` instead. cargo-dist is installed like every other tool, from `.config/cargo-tools.toml` through the setup action, so its version is pinned in one place and fetched as a prebuilt release. The crate is `cargo-dist` but its binary is `dist`, not a cargo subcommand, so the workflows call `dist plan`, `dist build` and `dist host`. It needs these repository secrets:
 
 | Secret | Holds |
 | --- | --- |
@@ -150,8 +150,10 @@ Keeps every pinned version current, so the project never again sits months behin
 - crates and `Cargo.lock` (lockfile only; manifests keep their ranges);
 - GitHub Actions, pinned by SHA with the release in a comment;
 - the toolchain in `rust-toolchain.toml`, grouped with `rust-version` in `Cargo.toml` so the two stay equal;
-- the prek hook repositories in `prek.toml`, through a regex manager that reads the `# frozen:` markers;
-- the cargo tools in xtask's `TOOLS` table and the cargo-dist version in the workflows and `dist-workspace.toml`.
+- the prek hook repositories in `.pre-commit-config.yaml`, through its built-in pre-commit manager;
+- the cargo tools in `.config/cargo-tools.toml` and the matching `cargo-dist-version` in `dist-workspace.toml`.
+
+The last two have no Renovate manager of their own, so each has a small custom one. Both files are data and nothing else, one `name = "version"` per line, which is what the patterns match.
 
 Every update waits out the seven-day cooldown, refuses a release with no publication timestamp, and arrives as a Conventional Commit (`build(deps): …`, `ci(deps): …`) that passes the same hooks as any other change. Compatible crate updates are grouped into one pull request; majors arrive one by one because each needs reading. Security fixes skip the cooldown. A dependency dashboard issue lists everything pending.
 

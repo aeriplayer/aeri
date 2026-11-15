@@ -99,8 +99,8 @@ Done when:
 
 - unit tests show the `SampleRate` and `Channels` constructors reject zero and round-trip every other value through `get()` and `TryFrom`;
 - `prek run mutants --stage manual --all-files` leaves no surviving mutant in `aeri-core`;
-- the `coverage` hook in `prek.toml` gains a third line, `&& cargo llvm-cov report --package aeri-core --fail-under-lines 100`, and passes ([`TESTING.md`](../TESTING.md));
-- `--no-tests=pass` is removed from the `cargo-nextest` and `coverage` hooks in `prek.toml`. It exists only because the crates are empty; from this step on, a run that finds no tests is a failure.
+- the `coverage` hook in `.pre-commit-config.yaml` gains a third line, `&& cargo llvm-cov report --package aeri-core --fail-under-lines 100`, and passes ([`TESTING.md`](../TESTING.md));
+- `--no-tests=pass` is removed from the `cargo-nextest` and `coverage` hooks in `.pre-commit-config.yaml`. It exists only because the crates are empty; from this step on, a run that finds no tests is a failure.
 
 ## Step 2 — `aeri-audio`: `OutputSink` and `FakeSink`
 
