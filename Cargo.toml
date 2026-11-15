@@ -19,10 +19,11 @@ rust-version = "1.100.0"
 publish      = false
 
 [workspace.dependencies]
-anyhow     = { version = "1.0.104", default-features = false, features = ["std"] }
-fs-err     = { version = "3.3.2", default-features = false }
-serde_json = { version = "1.0.154", default-features = false, features = ["std"] }
-toml       = { version = "1.2.1", default-features = false, features = ["parse", "serde", "std"] }
+anyhow         = { version = "1.0.104", default-features = false, features = ["std"] }
+cargo_metadata = { version = "0.23.1", default-features = false }
+fs-err         = { version = "3.3.2", default-features = false }
+serde          = { version = "1.0.229", default-features = false, features = ["derive", "std"] }
+toml           = { version = "1.2.1", default-features = false, features = ["parse", "serde", "std"] }
 
 # Rationale for each group: docs/TOOLING.md.
 
@@ -50,6 +51,7 @@ bare_urls               = "warn"
 pedantic             = { level = "warn", priority = -1 }
 nursery              = { level = "warn", priority = -1 }
 missing_const_for_fn = "allow"
+redundant_pub_crate  = "allow"
 
 unwrap_used   = "deny"
 get_unwrap    = "deny"

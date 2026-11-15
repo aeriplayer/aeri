@@ -1,32 +1,27 @@
 //! Repository automation, run as `cargo xtask <task>`.
 
-pub mod deps;
+mod deps;
 
+use std::collections::BTreeMap;
 use std::process::Command;
 
 use anyhow::{Context as _, Result, bail, ensure};
 
 const USAGE: &str = "\
 tasks:
-  install-hooks  install the Git hooks defined in prek.toml (requires prek)
+  install-hooks  install the Git hooks in .pre-commit-config.yaml (requires prek)
   install-tools  install the cargo subcommands the hooks and CI call
                  (all of them, or only the names given: `install-tools cargo-nextest`)
   check-deps     dependency policy cargo-deny cannot express: explicit features,
                  no stale build-script permissions
   release        not implemented yet; use `dist build`";
 
-/// Cargo subcommands the hooks in `prek.toml` invoke, as `(crate, version)`.
+/// The cargo subcommands the hooks and CI invoke, as `crate = "version"`.
 ///
 /// The only place their versions are written down: developers and CI install from this
-/// list, so a hook never meets a different version in CI. They are not prek-managed
+/// file, so a hook never meets a different version in CI. They are not prek-managed
 /// because prek would build them with its own, newer toolchain rather than the pinned one.
-const TOOLS: &[(&str, &str)] = &[
-    ("cargo-nextest", "0.9.152"),
-    ("cargo-hack", "0.6.46"),
-    ("cargo-llvm-cov", "0.9.1"),
-    ("cargo-mutants", "27.1.0"),
-    ("cargo-shear", "1.14.0"),
-];
+const TOOLS_TOML: &str = include_str!("../../.config/cargo-tools.toml");
 
 fn main() -> Result<()> {
     let mut args = std::env::args().skip(1);
@@ -40,7 +35,7 @@ fn main() -> Result<()> {
     }
 }
 
-/// Installs the prek shims for every hook type listed in `prek.toml`.
+/// Installs the prek shims for every hook type listed in `.pre-commit-config.yaml`.
 fn install_hooks() -> Result<()> {
     // Older clones set `core.hooksPath`, which hides prek's shims. `--unset` exits
     // non-zero when the key is absent, so the status is deliberately not checked.
@@ -53,12 +48,13 @@ fn install_hooks() -> Result<()> {
         .context("could not install hooks; is prek installed? (`brew install prek`)")
 }
 
-/// Installs the named tools from [`TOOLS`] at their pinned versions, or all of them when
-/// `requested` is empty.
+/// Installs the named tools from [`TOOLS_TOML`] at their pinned versions, or all of them
+/// when `requested` is empty.
 ///
 /// Prefers `cargo binstall` (prebuilt binaries); falls back to `cargo install`.
 fn install_tools(requested: &[String]) -> Result<()> {
-    let selected = select_tools(requested)?;
+    let tools = pinned_tools()?;
+    let selected = select_tools(&tools, requested)?;
 
     let cargo = std::env::var("CARGO").unwrap_or_else(|_| "cargo".into());
     let have_binstall = Command::new(&cargo)
@@ -96,18 +92,23 @@ fn run_with_retries(command: &mut Command, attempts: u32) -> Result<()> {
     result
 }
 
-/// Picks the entries of [`TOOLS`] named in `requested`, or all of them when it is empty.
-fn select_tools(requested: &[String]) -> Result<Vec<(&'static str, &'static str)>> {
-    if let Some(unknown) = requested
-        .iter()
-        .find(|name| !TOOLS.iter().any(|(tool, _)| tool == name))
-    {
-        bail!("unknown tool `{unknown}`; known tools are in `TOOLS` in xtask/src/main.rs");
+/// The crate-to-version table in [`TOOLS_TOML`].
+fn pinned_tools() -> Result<BTreeMap<String, String>> {
+    toml::from_str(TOOLS_TOML).context("could not parse .config/cargo-tools.toml")
+}
+
+/// Picks the entries of `tools` named in `requested`, or all of them when it is empty.
+fn select_tools<'a>(
+    tools: &'a BTreeMap<String, String>,
+    requested: &[String],
+) -> Result<Vec<(&'a str, &'a str)>> {
+    if let Some(unknown) = requested.iter().find(|name| !tools.contains_key(*name)) {
+        bail!("unknown tool `{unknown}`; known tools are in .config/cargo-tools.toml");
     }
-    Ok(TOOLS
+    Ok(tools
         .iter()
-        .copied()
-        .filter(|(name, _)| requested.is_empty() || requested.iter().any(|r| r == name))
+        .filter(|(name, _)| requested.is_empty() || requested.contains(name))
+        .map(|(name, version)| (name.as_str(), version.as_str()))
         .collect())
 }
 
@@ -126,13 +127,20 @@ mod tests {
     use super::*;
 
     #[test]
+    fn the_pinned_tools_file_parses() {
+        assert!(pinned_tools().unwrap().contains_key("cargo-nextest"));
+    }
+
+    #[test]
     fn no_names_selects_every_tool() {
-        assert_eq!(select_tools(&[]).unwrap().len(), TOOLS.len());
+        let tools = pinned_tools().unwrap();
+        assert_eq!(select_tools(&tools, &[]).unwrap().len(), tools.len());
     }
 
     #[test]
     fn names_select_only_those_tools() {
-        let picked = select_tools(&["cargo-hack".into()]).unwrap();
+        let tools = pinned_tools().unwrap();
+        let picked = select_tools(&tools, &["cargo-hack".into()]).unwrap();
         assert_eq!(
             picked.iter().map(|(n, _)| *n).collect::<Vec<_>>(),
             ["cargo-hack"]
@@ -141,6 +149,7 @@ mod tests {
 
     #[test]
     fn unknown_name_is_an_error() {
-        assert!(select_tools(&["cargo-nope".into()]).is_err());
+        let tools = pinned_tools().unwrap();
+        assert!(select_tools(&tools, &["cargo-nope".into()]).is_err());
     }
 }
