@@ -42,7 +42,8 @@ first needs it, noted below.
 > `aeri-core` defines what playback needs, and nothing more. The metadata schema waits
 > for Phase 4, where its consumers are ([ADR 0009](adr/0009-defer-metadata-schema.md)).
 
-No blockers. Small enough to fold into the start of Phase 3 work.
+No blockers. Small enough to fold into the start of Phase 3 work. Both phases are
+specified step by step in [`design/phase-2-3-playback.md`](design/phase-2-3-playback.md).
 
 - [x] Finalize daemon concurrency model: multi-client
       ([ADR 0001](adr/0001-multi-client-daemon.md))
@@ -68,7 +69,7 @@ No blockers. Small enough to fold into the start of Phase 3 work.
 - [ ] `aeri-audio`: `PipeWireSink`; report the negotiated rate
 - [ ] Command channel into the decode thread: play, seek, stop
 - [ ] `aeri-engine`: wires decoder → DSP chain → resampler → `OutputSink`
-- [x] `aeri-ipc`: `aeri-engine` optional behind default-on `local` feature
+- [ ] `aeri-ipc`: `aeri-engine` optional behind default-on `local` feature
       ([ADR 0003](adr/0003-ipc-local-feature.md))
 - [ ] `aeri-ipc`: `Player` trait (play, pause, stop, seek, state subscription; owned
       `aeri-core` types only); `LocalPlayer` wrapping the engine
@@ -88,7 +89,6 @@ No blockers. Small enough to fold into the start of Phase 3 work.
 - [ ] Metadata schema: `Track`, `Album`, `Artist`, custom tag fields — designed with
       the SQLite schema below; `aeri-core` types grow to match
       ([ADR 0009](adr/0009-defer-metadata-schema.md))
-- [ ] State fan-out design: initial snapshot, slow-subscriber policy
 - [ ] `proto/aeri/v1/player.proto`: `Play`, `Pause`, `Stop`, `Seek`, server-streaming
       `WatchState`; Connect service + `RemotePlayer` in `aeri-ipc`
 - [ ] `aeri-cli`: `daemon`, plus `pause`, `stop`, `seek <seconds>` over `RemotePlayer`

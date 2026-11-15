@@ -3,7 +3,12 @@
 dist-manifest.json
 .mcp.json
 .opencode.json
-.claude/
+# Local Claude Code settings and tool-generated skills stay private; the project's
+# own review skill is shared.
+.claude/*
+!.claude/skills/
+.claude/skills/*
+!.claude/skills/aeri-review/
 .vscode/
 # Added by code-review-graph
 .code-review-graph/
