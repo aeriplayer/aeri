@@ -1,15 +1,4 @@
-# Generated skeleton for cargo-dist v0.32.0.
-# Run `cargo dist generate` after installing cargo-dist to get the canonical output.
-#
-# Required secrets:
-#   APPLE_CERTIFICATE              — base64-encoded Developer ID Application .p12
-#   APPLE_CERTIFICATE_PASSWORD     — passphrase for the .p12
-#   APPLE_SIGNING_IDENTITY         — "Developer ID Application: Name (TEAMID)"
-#   APPLE_NOTARIZATION_USERNAME    — Apple ID email
-#   APPLE_NOTARIZATION_PASSWORD    — app-specific password for notarytool
-#   APPLE_TEAM_ID                  — 10-character team identifier
-#   HOMEBREW_TAP_TOKEN             — GitHub PAT with repo scope on the tap repo
-
+# Generated skeleton, not cargo-dist's canonical output; secrets: docs/TOOLING.md.
 name: Release
 
 permissions: {}
@@ -54,8 +43,6 @@ jobs:
     name: Build · ${{ matrix.target }}
     needs: plan
     runs-on: ${{ matrix.runner }}
-    # Add `id-token: write` and `attestations: write` here, and only here, when the
-    # Sigstore / build-provenance step is added.
     permissions:
       contents: read
     strategy:
@@ -94,7 +81,7 @@ jobs:
             | sh
 
       - name: Set up Rust toolchain
-        run: rustup toolchain install # reads rust-toolchain.toml
+        run: rustup toolchain install
 
       - name: Build release artifacts
         run: |
@@ -105,7 +92,6 @@ jobs:
         env:
           TAG: ${{ needs.plan.outputs.tag }}
           TARGET: ${{ matrix.target }}
-          # macOS signing + notarization (only consumed by the macos-14 runner)
           APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
           APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
           APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}

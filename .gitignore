@@ -3,8 +3,7 @@
 dist-manifest.json
 .mcp.json
 .opencode.json
-# Local Claude Code settings and tool-generated skills stay private; the project's
-# own review skill is shared.
+# Only the project's own review skill is shared.
 .claude/*
 !.claude/skills/
 .claude/skills/*

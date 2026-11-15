@@ -1,9 +1,4 @@
-# Dependency policy, enforced by the `cargo-deny` hook at pre-push and in CI.
-# This is the mechanical half of the "defensible dependencies" pillar in
-# docs/ARCHITECTURE.md.
-
 [graph]
-# Only the platforms aeri ships on; a Windows-only advisory is not ours to chase.
 targets      = ["aarch64-apple-darwin", "x86_64-unknown-linux-gnu", "aarch64-unknown-linux-gnu"]
 all-features = true
 
@@ -14,19 +9,14 @@ yanked  = "deny"
 [licenses]
 version              = 2
 confidence-threshold = 0.93
-# Permissive licences compatible with shipping `MIT OR Apache-2.0` binaries.
-allow = ["MIT", "Apache-2.0", "Unicode-3.0", "Zlib"]
+allow                = ["MIT", "Apache-2.0", "Unicode-3.0", "Zlib"]
 
 [bans]
 multiple-versions    = "warn"
 wildcards            = "deny"
 allow-wildcard-paths = true
 
-# The crate graph in docs/ARCHITECTURE.md, enforced. A crate listed here may only
-# be depended on directly by its `wrappers`.
-#   - Frontends reach the engine through the `Player` trait in aeri-ipc, never
-#     directly.
-#   - Only the engine composes the audio and decode layers.
+# The crate graph from docs/ARCHITECTURE.md.
 deny = [
     { crate = "aeri-engine", wrappers = ["aeri-ipc"] },
     { crate = "aeri-audio", wrappers = ["aeri-engine"] },

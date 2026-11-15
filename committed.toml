@@ -1,5 +1,3 @@
-# Commit message policy, enforced by the `committed` hook at commit-msg.
-# See CLAUDE.md § Commits.
 style = "conventional"
 allowed_types = [
     "feat",

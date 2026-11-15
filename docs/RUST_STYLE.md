@@ -127,7 +127,7 @@ callback code is reviewed against that list line by line.
 
 - Public items have rustdoc (lint-enforced). The first line is a one-sentence summary.
   Document `# Errors` for fallible functions and `# Panics` if any panic is reachable.
-- Comments explain *why*. A comment that restates the code is deleted.
+- Comments are the last resort, not the default; see [§12](#12-comments).
 - Unit tests sit in `#[cfg(test)] mod tests` beside the code; behaviour that crosses
   modules is tested in `tests/`. Test names say what is expected:
   `removing_the_current_item_moves_current_to_its_successor`.
@@ -148,3 +148,47 @@ Add one only when code needs it, with `cargo add`, then move the version into
 `[workspace.dependencies]`. Before adding: is it maintained, is its licence in
 `deny.toml`, does it duplicate something already in the tree, and could `std` do this?
 Prefer few features: `default-features = false` and enable what is used.
+
+## 12. Comments
+
+Code says *what*. Types, names and structure should make *how* readable. Anything
+longer than a sentence belongs somewhere it can be read, linked and kept current: a
+doc comment, a Markdown file, or an ADR. Inline comments are the exception.
+
+**Write no comment unless deleting it would let a future reader make a mistake they
+cannot see coming.** The test is "what breaks if this is gone?" If the answer is "nothing,
+the code is still clear", delete it. Rename or extract instead.
+
+A comment earns its place only as one of these, in one or two lines:
+
+- a **hidden constraint**: an invariant, ordering, or limit that the code does not
+  express and a tidy-up would break;
+- a **workaround**, naming what it works around and, where known, when to remove it;
+- a **surprising choice**, where the obvious alternative was tried or rejected;
+- a **`// SAFETY:`** justification, or the `reason` of an `#[expect]` (lint-enforced);
+- a **pointer** to the document that holds the longer reason (`// See ADR 0010`).
+
+Never write:
+
+- a comment that restates the line below it, or narrates steps ("// loop over tracks");
+- history or provenance ("added for the queue work", "was X before"): that is `git log`;
+- a TODO without an owner or an issue; none is better than an orphaned one;
+- section banners or ASCII rules; split the file or the module instead;
+- reasoning about *why this approach* in prose across several lines.
+
+Where the explanation goes instead:
+
+| What you want to say | Where it lives |
+| --- | --- |
+| What an item is, how to call it, what it returns or panics on | `///` rustdoc on the item |
+| How a module or crate fits together | `//!` at the top of the module |
+| Why a design was chosen over the alternative | An ADR in [`adr/`](adr/README.md) |
+| Why a tool, hook, lint or CI job is configured as it is | [`TOOLING.md`](TOOLING.md) |
+| Anything a newcomer must know before touching an area | A Markdown file in `docs/`, linked from the code |
+
+The same rule governs configuration files (`.toml`, `.yml`, `.proto`). Do not describe
+what a key does; the tool's own documentation does that. Version markers written by
+tools (`# frozen: v1.1.12`, `# v7.0.1`) and `#:schema` directives are data and stay.
+
+Doc comments are held to the same standard: a summary sentence, then only what the
+signature cannot say. Restating parameter names in prose is noise.

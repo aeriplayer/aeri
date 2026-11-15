@@ -16,6 +16,5 @@ path = "src/main.rs"
 [lints]
 workspace = true
 
-# `publish = false` keeps the crate off crates.io; it is still a release artifact.
 [package.metadata.dist]
 dist = true

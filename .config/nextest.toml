@@ -1,16 +1,8 @@
-# cargo-nextest configuration. https://nexte.st/docs/configuration/
-
 [profile.default]
-# Run everything and report every failure, rather than stopping at the first.
-fail-fast = false
-# A test that hangs is a failure, not a stuck terminal. The engine tests join
-# threads; if a join never returns, this is what ends the run.
+fail-fast    = false
 slow-timeout = { period = "20s", terminate-after = 3 }
-# No retries: a test that passes on the second attempt is a flaky test, and a
-# flaky test is a bug in the test or in the code.
-retries = 0
+retries      = 0
 
 [profile.ci]
-# Same rules; CI additionally keeps output of passing tests out of the log.
 success-output = "never"
 failure-output = "immediate-final"

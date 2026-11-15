@@ -45,8 +45,7 @@ runs:
       with:
         install-only: true
 
-    # cargo-binstall fetches prebuilt binaries, so the pinned tool list in xtask
-    # installs in seconds instead of compiling for minutes.
+    # Lets `xtask install-tools` fetch prebuilt binaries instead of compiling.
     - if: inputs.tools == 'true'
       uses: taiki-e/install-action@4a76afe23f9e08d2d9550fb56e556444e8611d21 # v2.90.4
       with:

@@ -1,4 +1,3 @@
-# TOML formatting, enforced by the `taplo-format` hook.
 [formatting]
 column_width        = 100
 indent_string       = "    "

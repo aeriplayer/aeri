@@ -1,9 +1,3 @@
-# Keeps dependencies and CI actions current, so the project never again sits
-# months behind without anyone deciding that it should.
-#
-# Every update arrives as a pull request and must pass the same hooks as any
-# other change. The cooldown holds back releases younger than a week, giving a
-# compromised or broken release time to be noticed and yanked.
 version: 2
 
 updates:
@@ -14,8 +8,6 @@ updates:
     cooldown:
       default-days: 7
     groups:
-      # One pull request for compatible updates; majors arrive one by one,
-      # because each of those needs reading.
       compatible:
         update-types: [minor, patch]
     commit-message:
