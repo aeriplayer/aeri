@@ -64,3 +64,4 @@ verified. Include the condition under which this should be revisited.
 | [0009](0009-open-tag-metadata.md) | Open, multi-value tag map; schema waits for the library |
 | [0010](0010-one-script-language.md) | One script language formats and queries tracks |
 | [0011](0011-gpui-and-layout-as-data.md) | The GUI is built on GPUI; layout is data |
+| [0012](0012-filesystem-through-fs-err.md) | Filesystem access goes through fs-err |

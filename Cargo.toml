@@ -15,11 +15,14 @@ edition      = "2024"
 license      = "MIT OR Apache-2.0"
 repository   = "https://github.com/aeriplayer/aeri"
 authors      = ["Elliot Farmer Garcia"]
-rust-version = "1.100"
+rust-version = "1.100.0"
 publish      = false
 
 [workspace.dependencies]
-anyhow = "1.0.104"
+anyhow     = { version = "1.0.104", default-features = false, features = ["std"] }
+fs-err     = { version = "3.3.2", default-features = false }
+serde_json = { version = "1.0.154", default-features = false, features = ["std"] }
+toml       = { version = "1.2.1", default-features = false, features = ["parse", "serde", "std"] }
 
 # Rationale for each group: docs/TOOLING.md.
 
@@ -64,10 +67,38 @@ unnecessary_safety_doc        = "warn"
 allow_attributes                = "deny"
 allow_attributes_without_reason = "deny"
 
-mod_module_files          = "deny"
-clone_on_ref_ptr          = "warn"
-unused_trait_names        = "warn"
-mem_forget                = "deny"
-lossy_float_literal       = "warn"
-error_impl_error          = "warn"
-tests_outside_test_module = "warn"
+mod_module_files                = "deny"
+clone_on_ref_ptr                = "warn"
+unused_trait_names              = "warn"
+mem_forget                      = "deny"
+lossy_float_literal             = "warn"
+error_impl_error                = "warn"
+tests_outside_test_module       = "warn"
+exit                            = "warn"
+empty_drop                      = "warn"
+empty_structs_with_brackets     = "warn"
+rc_buffer                       = "warn"
+rc_mutex                        = "warn"
+rest_pat_in_fully_bound_structs = "warn"
+iter_over_hash_type             = "warn"
+
+# Rationale for each profile: docs/TOOLING.md.
+[profile.dev]
+debug = "line-tables-only"
+
+[profile.dev.package."*"]
+opt-level = 2
+
+[profile.release]
+lto           = "fat"
+codegen-units = 1
+strip         = true
+
+[profile.profiling]
+inherits = "release"
+debug    = "full"
+strip    = false
+lto      = false
+
+[profile.dist]
+inherits = "release"

@@ -8,22 +8,23 @@ default_stages             = ["pre-commit"]
 exclude = '^LICENSE-'
 
 [priorities]
-fix-whitespace = 0
-fix-eof        = 1
-fix-eol        = 2
-fix-bom        = 3
-fix-typos      = 4
-fix-toml       = 5
-fix-markdown   = 6
-fix-rust       = 7
-check          = 10
-clippy         = 20
-test           = 30
-doctest        = 31
-doc            = 32
-features       = 33
-deny           = 34
-manual         = 40
+fix-whitespace    = 0
+fix-eof           = 1
+fix-eol           = 2
+fix-bom           = 3
+fix-typos         = 4
+fix-toml          = 5
+fix-markdown      = 6
+fix-rust          = 7
+check             = 10
+clippy            = 20
+dependency-policy = 21
+test              = 30
+doctest           = 31
+doc               = 32
+features          = 33
+deny              = 34
+manual            = 40
 
 [update]
 freeze        = true
@@ -145,6 +146,24 @@ groups = ["target"]
 priority = "clippy"
 
 [[repos.hooks]]
+id             = "cargo-shear"
+name           = "cargo shear (unused and misplaced dependencies)"
+language       = "system"
+entry          = "cargo shear --deny-warnings"
+files          = { glob = ["**/*.rs", "**/Cargo.toml", "Cargo.lock"] }
+pass_filenames = false
+priority       = "check"
+
+[[repos.hooks]]
+id             = "check-deps"
+name           = "dependency policy (cargo xtask check-deps)"
+language       = "system"
+entry          = "cargo xtask check-deps"
+files          = { glob = ["**/Cargo.toml", "Cargo.lock", "deny.toml"] }
+pass_filenames = false
+priority       = "dependency-policy"
+
+[[repos.hooks]]
 id             = "cargo-nextest"
 name           = "cargo nextest"
 language       = "system"
@@ -227,16 +246,6 @@ always_run     = true
 pass_filenames = false
 stages         = ["manual"]
 priority       = "manual"
-
-[[repos]]
-repo = "https://github.com/bnjbvr/cargo-machete"
-rev = "a84eadc0a20e522e37a502609e97a7ce30c998ed" # frozen: v0.10.0
-hooks = [
-    { id = "cargo-machete", priority = "check", files = { glob = [
-        "**/*.rs",
-        "**/Cargo.toml",
-    ] } },
-]
 
 [[repos]]
 repo = "https://github.com/EmbarkStudios/cargo-deny"
