@@ -19,6 +19,7 @@
 
   rangeStrategy: "auto",
   cargo: { rangeStrategy: "update-lockfile" },
+  "pre-commit": { enabled: true },
   lockFileMaintenance: { enabled: false },
 
   semanticCommits: "enabled",
@@ -55,20 +56,20 @@
       groupName: "rust toolchain",
     },
     {
-      description: "Hook revisions in prek.toml",
-      matchFileNames: ["prek.toml"],
+      description: "Hook revisions in .pre-commit-config.yaml",
+      matchManagers: ["pre-commit"],
       groupName: "prek hooks",
       semanticCommitType: "ci",
     },
     {
       description: "typos also tags its dictionaries; follow releases only",
-      matchFileNames: ["prek.toml"],
+      matchManagers: ["pre-commit"],
       matchPackageNames: ["crate-ci/typos"],
       allowedVersions: "/^v\\d+\\.\\d+\\.\\d+$/",
     },
     {
-      description: "cargo-dist is named in the workflows and in dist-workspace.toml",
-      matchDepNames: ["axodotdev/cargo-dist"],
+      description: "cargo-dist is pinned in cargo-tools.toml and in dist-workspace.toml",
+      matchDepNames: ["cargo-dist"],
       groupName: "cargo-dist",
       semanticCommitType: "ci",
     },
@@ -76,10 +77,10 @@
 
   customManagers: [
     {
-      description: "Cargo tools pinned in xtask's TOOLS table",
+      description: "Cargo tools in .config/cargo-tools.toml, one `crate = \"version\"` per line",
       customType: "regex",
-      managerFilePatterns: ["/^xtask/src/main\\.rs$/"],
-      matchStrings: ['\\("(?<depName>cargo-[a-z0-9-]+)", "(?<currentValue>[^"]+)"\\)'],
+      managerFilePatterns: ["/^\\.config/cargo-tools\\.toml$/"],
+      matchStrings: ['(?m)^(?<depName>[a-z0-9_-]+)\\s*=\\s*"(?<currentValue>[^"]+)"$'],
       datasourceTemplate: "crate",
     },
     {
@@ -91,31 +92,12 @@
       datasourceTemplate: "rust-version",
     },
     {
-      description: "prek hook repositories, pinned to a commit with a `# frozen:` tag marker",
-      customType: "regex",
-      managerFilePatterns: ["/^prek\\.toml$/"],
-      matchStrings: [
-        'repo = "https://github\\.com/(?<depName>[^"]+)"\\s*\\nrev = "(?<currentDigest>[a-f0-9]{40})" # frozen: (?<currentValue>\\S+)',
-      ],
-      datasourceTemplate: "github-tags",
-    },
-    {
-      description: "cargo-dist installer URLs in the workflows",
-      customType: "regex",
-      managerFilePatterns: ["/^\\.github/workflows/.+\\.ya?ml$/"],
-      matchStrings: ["axodotdev/cargo-dist/releases/download/v(?<currentValue>[^/]+)/"],
-      depNameTemplate: "axodotdev/cargo-dist",
-      datasourceTemplate: "github-releases",
-      extractVersionTemplate: "^v(?<version>.+)$",
-    },
-    {
       description: "cargo-dist version dist expects in CI",
       customType: "regex",
       managerFilePatterns: ["/^dist-workspace\\.toml$/"],
       matchStrings: ['cargo-dist-version = "(?<currentValue>[^"]+)"'],
-      depNameTemplate: "axodotdev/cargo-dist",
-      datasourceTemplate: "github-releases",
-      extractVersionTemplate: "^v(?<version>.+)$",
+      depNameTemplate: "cargo-dist",
+      datasourceTemplate: "crate",
     },
   ],
 
