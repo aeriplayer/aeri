@@ -308,3 +308,4 @@ Resolve each before the crate that depends on it is written.
 | Scripting | One language for formatting and queries, in its own crate | [ADR 0010](adr/0010-one-script-language.md) |
 | GUI | GPUI; layout is data | [ADR 0011](adr/0011-gpui-and-layout-as-data.md) |
 | Filesystem errors | All file access through `fs-err`, so errors name their path | [ADR 0012](adr/0012-filesystem-through-fs-err.md) |
+| Property tests | `proptest`, std only, regressions committed | [ADR 0013](adr/0013-property-tests-with-proptest.md) |
