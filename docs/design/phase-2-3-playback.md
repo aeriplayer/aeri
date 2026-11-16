@@ -14,7 +14,7 @@ ADRs [0003](../adr/0003-native-output-backends.md),
 ## Outcome
 
 ```bash
-cargo run -p aeri-cli -- play tests/fixtures/sine.flac
+cargo run -p aeri-cli -- play crates/aeri-decode/tests/fixtures/sine.flac
 ```
 
 plays the file through the default output device, prints position as it goes, stops cleanly on Ctrl-C or end of track, and exits 0. Every step below lands with its tests, and `prek run --all-files` plus `prek run --all-files --stage pre-push` stay green.
