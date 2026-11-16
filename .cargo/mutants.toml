@@ -11,4 +11,8 @@ exclude_re = [
     "SymphoniaDecoder::from_bytes",
     # Only decides whether a warning is logged; no test reads the log.
     "replace != with == in Playback::start",
+    # Only connects to a PipeWire server, which CI lacks; verified by hand (ADR 0019).
+    'replace run -> Result<\(\), pw::Error> with Ok\(\(\)\)$',
+    # Only logs the graph rate; `resamples` holds the decision and is tested.
+    'replace report_rate with \(\)$',
 ]

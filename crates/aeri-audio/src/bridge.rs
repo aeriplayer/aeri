@@ -5,7 +5,14 @@
 //! atomics, each written by one side only. Positions count samples since the bridge was
 //! built, with discarded samples counted as consumed.
 
+use std::num::NonZeroU64;
+
+use aeri_core::StreamSpec;
+
 use crate::sync::{Arc, AtomicBool, AtomicU64, Ordering};
+
+/// How much audio a device sink's ring holds: a fifth of a second (ADR 0016).
+const BUFFERED_SECONDS_RECIPROCAL: usize = 5;
 
 /// The producer end of a sample ring.
 pub(crate) trait RingWriter: Send {
@@ -108,6 +115,15 @@ pub(crate) fn bridge<W: RingWriter, R: RingReader>(
     )
 }
 
+/// Builds a device sink's bridge: an `rtrb` ring holding 200 ms of `spec` (ADR 0016).
+pub(crate) fn device_bridge(
+    spec: StreamSpec,
+) -> (Writer<rtrb::Producer<f32>>, Renderer<rtrb::Consumer<f32>>) {
+    let channels = usize::from(spec.channels.get());
+    let capacity = spec.sample_rate.get() as usize / BUFFERED_SECONDS_RECIPROCAL * channels;
+    bridge(rtrb::RingBuffer::new(capacity), channels)
+}
+
 /// The sink's half of the bridge.
 #[derive(Debug)]
 pub(crate) struct Writer<W> {
@@ -153,12 +169,12 @@ impl<W: RingWriter> Writer<W> {
         self.shared.read_pos.load(Ordering::Relaxed) >= self.written
     }
 
-    /// Underruns the callback has counted since this was last called.
-    pub(crate) fn take_underruns(&mut self) -> u64 {
+    /// Underruns the callback has counted since this was last called, if there were any.
+    pub(crate) fn take_underruns(&mut self) -> Option<NonZeroU64> {
         let total = self.shared.underruns.load(Ordering::Relaxed);
         let new = total.saturating_sub(self.underruns_seen);
         self.underruns_seen = total;
-        new
+        NonZeroU64::new(new)
     }
 }
 
@@ -234,7 +250,7 @@ mod tests {
         assert_eq!(out.to_vec(), ramp(1, 8));
         assert_eq!(writer.frames_played(), 4);
         assert!(writer.is_drained());
-        assert_eq!(writer.take_underruns(), 0);
+        assert_eq!(writer.take_underruns(), None);
     }
 
     #[test]
@@ -247,8 +263,8 @@ mod tests {
 
         assert_eq!(out, [1.0, 2.0, 3.0, 4.0, 0.0, 0.0, 0.0, 0.0]);
         assert_eq!(writer.frames_played(), 2);
-        assert_eq!(writer.take_underruns(), 1);
-        assert_eq!(writer.take_underruns(), 0);
+        assert_eq!(writer.take_underruns(), NonZeroU64::new(1));
+        assert_eq!(writer.take_underruns(), None);
     }
 
     #[test]
@@ -262,7 +278,7 @@ mod tests {
         assert_eq!(out, [0.0; 4]);
         assert_eq!(writer.frames_played(), 0);
         assert!(!writer.is_drained());
-        assert_eq!(writer.take_underruns(), 0);
+        assert_eq!(writer.take_underruns(), None);
 
         writer.set_paused(false);
         assert_no_alloc(|| renderer.render(&mut out));

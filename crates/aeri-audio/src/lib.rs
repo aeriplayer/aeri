@@ -8,23 +8,20 @@
 
 #[cfg(test)]
 mod alloc_guard;
-#[cfg_attr(
-    all(not(target_os = "macos"), not(test)),
-    expect(
-        dead_code,
-        reason = "only CoreAudioSink uses it until the PipeWire sink lands"
-    )
-)]
 mod bridge;
 #[cfg(target_os = "macos")]
 mod coreaudio;
 #[cfg(feature = "test-util")]
 mod fake;
+#[cfg(target_os = "linux")]
+mod pipewire;
 mod sink;
 mod sync;
 
 #[cfg(target_os = "macos")]
 pub use coreaudio::CoreAudioSink;
+#[cfg(target_os = "linux")]
+pub use pipewire::PipeWireSink;
 
 #[cfg(feature = "test-util")]
 pub use fake::{FakeSink, FakeSinkObserver, SinkCall};

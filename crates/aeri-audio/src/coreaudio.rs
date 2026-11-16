@@ -11,11 +11,8 @@ use coreaudio::audio_unit::macos_helpers::{
 use coreaudio::audio_unit::render_callback::{Args, data};
 use coreaudio::audio_unit::{AudioUnit, Element, SampleFormat, Scope, StreamFormat};
 
-use crate::bridge::{Writer, bridge};
+use crate::bridge::{Writer, device_bridge};
 use crate::{OutputSink, SinkError};
-
-/// How much audio the ring between the sink and the callback holds (ADR 0016).
-const BUFFERED_SECONDS_RECIPROCAL: usize = 5;
 
 /// Plays through the system's default output device.
 ///
@@ -66,7 +63,6 @@ impl OutputSink for CoreAudioSink {
             source: Box::new(error),
         };
         let mut unit = audio_unit_from_device_id(device, false).map_err(refused)?;
-        let channels = usize::from(requested.channels.get());
         unit.set_stream_format(
             StreamFormat {
                 sample_rate: f64::from(rate),
@@ -79,8 +75,7 @@ impl OutputSink for CoreAudioSink {
         )
         .map_err(refused)?;
 
-        let capacity = rate as usize / BUFFERED_SECONDS_RECIPROCAL * channels;
-        let (writer, mut renderer) = bridge(rtrb::RingBuffer::new(capacity), channels);
+        let (writer, mut renderer) = device_bridge(requested);
         unit.set_render_callback(move |args: Args<data::Interleaved<f32>>| {
             renderer.render(args.data.buffer);
             Ok(())
@@ -97,9 +92,8 @@ impl OutputSink for CoreAudioSink {
 
     fn write(&mut self, interleaved: &[f32]) -> Result<usize, SinkError> {
         let writer = &mut self.stream()?.writer;
-        let underruns = writer.take_underruns();
-        if underruns > 0 {
-            tracing::warn!(underruns, "audio output ran dry");
+        if let Some(underruns) = writer.take_underruns() {
+            tracing::warn!(underruns = underruns.get(), "audio output ran dry");
         }
         Ok(writer.write(interleaved))
     }

@@ -1,8 +1,9 @@
 name: Set up aeri
 description: >-
-  Everything a job needs before it can run hooks: the pinned Rust toolchain, a
-  cache of the registry and compiled dependencies, prek, and (optionally) the
-  cargo tools the hooks call.
+  Everything a job needs before it can run hooks: on Linux, the system headers
+  that pipewire builds against; the pinned Rust toolchain, a cache of the
+  registry and compiled dependencies, prek, and (optionally) the cargo tools the
+  hooks call.
 
 inputs:
   tools:
@@ -18,6 +19,14 @@ inputs:
 runs:
   using: composite
   steps:
+    # pipewire's bindings are generated at build time from the system headers (ADR 0019).
+    - name: Install PipeWire headers and libclang
+      if: runner.os == 'Linux'
+      shell: bash
+      run: |
+        sudo apt-get update -qq
+        sudo apt-get install -y --no-install-recommends libpipewire-0.3-dev libclang-dev
+
     - name: Set up Rust toolchain
       shell: bash
       run: rustup toolchain install # reads rust-toolchain.toml

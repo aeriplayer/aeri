@@ -39,6 +39,7 @@ coreaudio-rs = { version = "0.14.2", default-features = false, features = [
 ] }
 fs-err = { version = "3.3.2", default-features = false }
 loom = { version = "0.7.3", default-features = false }
+pipewire = { version = "0.10.1", default-features = false, features = ["v0_3_49"] }
 proptest = { version = "1.12.0", default-features = false, features = ["std"] }
 rtrb = { version = "0.4.1", default-features = false }
 serde = { version = "1.0.229", default-features = false, features = ["derive", "std"] }

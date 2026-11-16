@@ -77,13 +77,17 @@ impl Engine {
     /// # Errors
     ///
     /// [`EngineError::Spawn`] as for [`spawn`](Self::spawn). On platforms without a device
-    /// sink yet (Linux, until the PipeWire sink lands), [`EngineError::Output`].
+    /// sink, [`EngineError::Output`].
     pub fn with_default_output() -> Result<Self, EngineError> {
         #[cfg(target_os = "macos")]
         {
             Self::spawn(Box::new(aeri_audio::CoreAudioSink::new()))
         }
-        #[cfg(not(target_os = "macos"))]
+        #[cfg(target_os = "linux")]
+        {
+            Self::spawn(Box::new(aeri_audio::PipeWireSink::new()))
+        }
+        #[cfg(not(any(target_os = "macos", target_os = "linux")))]
         {
             Err(EngineError::Output(aeri_audio::SinkError::NoDevice))
         }

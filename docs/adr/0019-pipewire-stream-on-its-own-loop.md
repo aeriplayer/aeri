@@ -1,6 +1,6 @@
 # ADR 0019 — On Linux, a PipeWire stream runs on its own loop thread and requests the source rate
 
-- **Status:** Proposed
+- **Status:** Accepted
 - **Date:** 2026-11-16
 
 ## Context

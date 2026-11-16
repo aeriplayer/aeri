@@ -2,13 +2,17 @@
 //! `cargo test -p aeri-audio --test device -- --ignored`
 
 #[cfg(test)]
-#[cfg(target_os = "macos")]
+#[cfg(any(target_os = "macos", target_os = "linux"))]
 mod tests {
     use std::f32::consts::TAU;
     use std::thread;
     use std::time::{Duration, Instant};
 
-    use aeri_audio::{CoreAudioSink, OutputSink as _};
+    #[cfg(target_os = "macos")]
+    use aeri_audio::CoreAudioSink as DeviceSink;
+    use aeri_audio::OutputSink as _;
+    #[cfg(target_os = "linux")]
+    use aeri_audio::PipeWireSink as DeviceSink;
     use aeri_core::{Channels, SampleRate, StreamSpec};
 
     #[test]
@@ -29,7 +33,7 @@ mod tests {
             .flat_map(|sample| [sample, sample])
             .collect();
 
-        let mut sink = CoreAudioSink::new();
+        let mut sink = DeviceSink::new();
         assert_eq!(sink.configure(spec).expect("default output opens"), spec);
 
         let mut rest = samples.as_slice();

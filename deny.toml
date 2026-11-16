@@ -18,6 +18,10 @@ exceptions = [
     { crate = "symphonia-common", allow = ["MPL-2.0"] },
     { crate = "symphonia-core", allow = ["MPL-2.0"] },
     { crate = "symphonia-metadata", allow = ["MPL-2.0"] },
+    # ADR 0019: build-time only, for pipewire's bindings; none is linked into aeri.
+    { crate = "bindgen", allow = ["BSD-3-Clause"] },
+    { crate = "libloading", allow = ["ISC"] },
+    { crate = "target-lexicon", allow = ["Apache-2.0 WITH LLVM-exception"] },
 ]
 
 [bans]
@@ -37,17 +41,24 @@ deny = [
 [bans.build]
 allow-build-scripts = [
     "anyhow",
+    "bindgen",
     "camino",
+    "clang-sys",
     "fs-err",
     "getrandom",
     "libc",
+    "libspa",
+    "libspa-sys",
     "num-traits",
     "objc2",
+    "pipewire-sys",
     "proc-macro2",
     "quote",
+    "rustix",
     "serde",
     "serde_core",
     "serde_json",
+    "target-lexicon",
     "thiserror",
     "zmij",
 ]
