@@ -255,7 +255,7 @@ Done when these integration tests pass against `FakeSink`:
 - `main` returns `anyhow::Result<()>`; a small `#[tokio::main(flavor = "current_thread")]` runtime is enough.
 - Depend on `aeri-engine` and `aeri-core` only, and build the engine with `Engine::with_default_output()`. Depending on the engine directly is a temporary exception that ends when `aeri-player` is created in Phase 4 (ADR 0006).
 - Print progress from `subscribe()`; `tokio::select!` it against `tokio::signal::ctrl_c()`. Exit when the state returns to `Stopped`.
-- User-facing output goes through one module that carries `#![expect(clippy::print_stdout, reason = "CLI output is the product")]`. Diagnostics go through `tracing`, initialised to stderr.
+- User-facing output goes through one module, whose functions write to an `impl Write` that `main` sets to stdout, so tests can assert on the exact text. Diagnostics go through `tracing`, initialised to stderr.
 
 Done when: the outcome at the top of this document works by hand, and an integration test runs the binary against a missing path and asserts a non-zero exit and a readable error.
 

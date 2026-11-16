@@ -16,5 +16,15 @@ path = "src/main.rs"
 [lints]
 workspace = true
 
+[dependencies]
+aeri-core.workspace          = true
+aeri-engine.workspace        = true
+anyhow.workspace             = true
+clap.workspace               = true
+fs-err.workspace             = true
+tokio                        = { workspace = true, features = ["macros", "rt", "signal"] }
+tracing.workspace            = true
+tracing-subscriber.workspace = true
+
 [package.metadata.dist]
 dist = true
