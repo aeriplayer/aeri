@@ -4,6 +4,7 @@ allow-dbg-in-tests    = true
 allow-print-in-tests  = true
 
 too-many-arguments-threshold = 5
+doc-valid-idents             = ["CoreAudio", "PipeWire", ".."]
 
 disallowed-methods = [
     { path = "std::thread::spawn", reason = "name the thread: std::thread::Builder::new().name(…) (RUST_STYLE §5)" },

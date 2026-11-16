@@ -42,6 +42,7 @@ allow-build-scripts = [
     "getrandom",
     "libc",
     "num-traits",
+    "objc2",
     "proc-macro2",
     "quote",
     "serde",

@@ -222,6 +222,18 @@ repos:
         stages: [manual]
         priority: manual
 
+      - id: loom
+        name: loom model of the real-time bridge
+        language: system
+        shell: sh
+        entry: |
+          RUSTFLAGS="--cfg loom" CARGO_TARGET_DIR=target/loom \
+            cargo test --package aeri-audio --lib --release --locked loom_model
+        always_run: true
+        pass_filenames: false
+        stages: [manual]
+        priority: manual
+
       - id: fuzz
         name: fuzz the decoder (cargo fuzz)
         language: system

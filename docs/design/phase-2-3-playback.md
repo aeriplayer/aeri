@@ -191,7 +191,7 @@ Done when:
 - a manual run plays a sine through the speakers with no audible glitches;
 - the callback function has unit tests for normal fill, underrun, pause, and flush, run under the allocation guard;
 - those tests pass under Miri (`prek run miri --stage manual --all-files`); tests that call the platform API are marked `#[cfg_attr(miri, ignore)]` with the reason;
-- the `loom` model of ADR 0018 shows that no interleaving plays a pre-flush sample after a post-flush one, plays a post-flush sample twice or out of order, or loses frames across a pause. It runs from a manual-stage `loom` hook, and in CI on pull requests that change `aeri-audio`.
+- the `loom` model of ADR 0018 shows that no interleaving mixes pre-flush and post-flush audio in one device buffer, plays a post-flush sample twice or out of order, or loses or repeats frames across a pause. It runs from a manual-stage `loom` hook, and in CI on pull requests that change `aeri-audio`.
 
 ## Step 5 — `aeri-engine`: the playback actor
 

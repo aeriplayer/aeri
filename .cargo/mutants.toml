@@ -1,8 +1,9 @@
 test_tool             = "nextest"
 additional_cargo_args = ["--all-features", "--locked"]
 
-# Build automation, not product code.
-exclude_globs = ["xtask/**", "**/build.rs"]
+# Build automation, not product code; and the macOS device sink, which CI's Linux runner
+# cannot compile and which is verified by hand (brief, Step 4).
+exclude_globs = ["xtask/**", "**/build.rs", "crates/aeri-audio/src/coreaudio.rs"]
 
 # Compiled only under `cfg(fuzzing)`, which no test build sets; the fuzz target covers them (ADR 0015).
 exclude_re = ["open_bytes", "SymphoniaDecoder::from_bytes"]
