@@ -56,6 +56,8 @@ Small enough to fold into the start of Phase 3. Both phases are specified step b
 
 > A player, not a file opener: playlists, a queue, playback order, volume, ReplayGain. Still driven from the CLI.
 
+Specified step by step in [`design/phase-4-playback.md`](design/phase-4-playback.md), which also lists the decisions still open.
+
 - [ ] Create `aeri-player`: the `Player` handle ([ADR 0006](adr/0006-frontends-use-the-player-handle.md)); move `aeri-cli` onto it and close the `deny.toml` exception
 - [ ] Playlists with stable entry ids; the active playlist
 - [ ] Playback order: default, repeat track, repeat playlist, shuffle
