@@ -4,7 +4,7 @@ A music player written in Rust for macOS and Linux, in the tradition of foobar20
 
 ## Status
 
-Nothing plays yet. Phase 2 (core playback types) is complete. **Phase 3, first audio, is in progress:** Steps 2 (`OutputSink` and `FakeSink`) and 3 (`Decoder` over symphonia, fuzzed) are done; Step 4 (`CoreAudioSink` and the real-time callback) is written and awaits its by-ear listening test, specified step by step in
+Nothing plays yet. Phase 2 (core playback types) is complete. **Phase 3, first audio, is in progress:** Steps 2 (`OutputSink` and `FakeSink`) and 3 (`Decoder` over symphonia, fuzzed) are done; Step 4 (`CoreAudioSink` and the real-time callback) is done and passed its listening test on macOS. Next is Step 5 (the engine); the PipeWire sink is a separate step that needs a Linux machine, specified step by step in
 [`docs/design/phase-2-3-playback.md`](docs/design/phase-2-3-playback.md).
 
 Five crates exist: `aeri-core`, `aeri-audio`, `aeri-decode`, `aeri-engine`, `aeri-cli`. `aeri-core` holds the playback types, `aeri-audio` the `OutputSink` trait, `CoreAudioSink`, and the test `FakeSink`, and `aeri-decode` FLAC and MP3 decoding; the rest are empty apart from doc comments. Planned crates are created in the phase that first needs them, not scaffolded early.
