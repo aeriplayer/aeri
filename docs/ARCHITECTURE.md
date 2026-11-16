@@ -248,7 +248,7 @@ Versions are chosen when each dependency is first used, not here.
 | Concern | Choice | Notes |
 | --- | --- | --- |
 | Audio output | Native backends behind `OutputSink` | No `cpal` (ADR 0003) |
-| Linux audio | `pipewire` | PipeWire only |
+| Linux audio | `pipewire` | PipeWire only; a stream on its own loop thread (ADR 0019) |
 | macOS audio | `coreaudio-rs` | Safe `AudioUnit` over the `objc2` bindings; no hog mode (ADR 0016, ADR 0017) |
 | Decode | `symphonia` | Pure Rust; FLAC and MP3 features only (ADR 0007) |
 | Resample | `rubato` | Sinc interpolation |
@@ -315,3 +315,4 @@ Resolve each before the crate that depends on it is written.
 | Real-time bridge | `rtrb` plus `Relaxed` position counters; flush without a handshake | [ADR 0016](adr/0016-real-time-bridge.md) |
 | macOS bit-perfect | Device switched to the source rate; never hog mode | [ADR 0017](adr/0017-bit-perfect-without-hog-mode.md) |
 | Real-time verification | In-house allocation guard; `loom` model of the bridge protocol | [ADR 0018](adr/0018-real-time-verification.md) |
+| Linux output | A PipeWire stream on its own loop thread; the source rate is requested, never forced | [ADR 0019](adr/0019-pipewire-stream-on-its-own-loop.md) |

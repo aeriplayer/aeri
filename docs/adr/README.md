@@ -71,3 +71,4 @@ verified. Include the condition under which this should be revisited.
 | [0016](0016-real-time-bridge.md) | Device sinks feed the callback through rtrb and position counters |
 | [0017](0017-bit-perfect-without-hog-mode.md) | On macOS, aeri switches the device rate but never takes it exclusively |
 | [0018](0018-real-time-verification.md) | The callback is verified by an in-house allocation guard and a loom model |
+| [0019](0019-pipewire-stream-on-its-own-loop.md) | On Linux, a PipeWire stream runs on its own loop thread and requests the source rate |
