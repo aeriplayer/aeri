@@ -163,7 +163,7 @@ Not up for reconsideration without an ADR.
 | --- | --- | --- |
 | Internal sample format | `f32` | Sufficient precision; avoids per-node format negotiation. Interleaved at the `Decoder` and `OutputSink` boundaries; layout inside the DSP chain is decided with `aeri-dsp` |
 | Block size | 1024 frames (internal) | The DSP block size, **not** the device period. The callback buffer size is chosen by the host audio API and must not be forced |
-| Sample rate | Follow source; re-init output on change | Bit-perfect on macOS in hog mode; best-effort on Linux, where the negotiated rate is reported, never assumed ([ADR 0003](adr/0003-native-output-backends.md)) |
+| Sample rate | Follow source; re-init output on change | On macOS the device is switched to the source rate, never taken exclusively ([ADR 0017](adr/0017-bit-perfect-without-hog-mode.md)); best-effort on Linux, where the negotiated rate is reported, never assumed ([ADR 0003](adr/0003-native-output-backends.md)) |
 | Gapless | Always on, across transitions that keep rate and channel layout | A format change re-inits the output and that gap is accepted (ADR 0003) |
 | ReplayGain | On by default, track and album modes | |
 | Volume | Software, in the DSP chain | Hardware volume off by default, for bit-perfect output |
@@ -249,7 +249,7 @@ Versions are chosen when each dependency is first used, not here.
 | --- | --- | --- |
 | Audio output | Native backends behind `OutputSink` | No `cpal` (ADR 0003) |
 | Linux audio | `pipewire` | PipeWire only |
-| macOS audio | `coreaudio-rs` | Hog mode for bit-perfect exclusive access |
+| macOS audio | `coreaudio-rs` | Safe `AudioUnit` over the `objc2` bindings; no hog mode (ADR 0016, ADR 0017) |
 | Decode | `symphonia` | Pure Rust; FLAC and MP3 features only (ADR 0007) |
 | Resample | `rubato` | Sinc interpolation |
 | Ring buffer | `rtrb` | Lock-free SPSC; real-time safe |
@@ -312,3 +312,6 @@ Resolve each before the crate that depends on it is written.
 | Property tests | `proptest`, std only, regressions committed | [ADR 0013](adr/0013-property-tests-with-proptest.md) |
 | Decoder licence | MPL-2.0 allowed for symphonia's crates only; notices required before release | [ADR 0014](adr/0014-mpl-2-0-for-symphonia.md) |
 | Fuzzing | `cargo-fuzz` in its own workspace on a pinned nightly; CI on PRs and daily | [ADR 0015](adr/0015-fuzzing-with-cargo-fuzz.md) |
+| Real-time bridge | `rtrb` plus `Relaxed` position counters; flush without a handshake | [ADR 0016](adr/0016-real-time-bridge.md) |
+| macOS bit-perfect | Device switched to the source rate; never hog mode | [ADR 0017](adr/0017-bit-perfect-without-hog-mode.md) |
+| Real-time verification | In-house allocation guard; `loom` model of the bridge protocol | [ADR 0018](adr/0018-real-time-verification.md) |

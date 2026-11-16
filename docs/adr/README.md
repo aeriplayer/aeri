@@ -68,3 +68,6 @@ verified. Include the condition under which this should be revisited.
 | [0013](0013-property-tests-with-proptest.md) | Property tests use proptest |
 | [0014](0014-mpl-2-0-for-symphonia.md) | MPL-2.0 is allowed for symphonia's crates only |
 | [0015](0015-fuzzing-with-cargo-fuzz.md) | Decoders are fuzzed with cargo-fuzz on a pinned nightly |
+| [0016](0016-real-time-bridge.md) | Device sinks feed the callback through rtrb and position counters |
+| [0017](0017-bit-perfect-without-hog-mode.md) | On macOS, aeri switches the device rate but never takes it exclusively |
+| [0018](0018-real-time-verification.md) | The callback is verified by an in-house allocation guard and a loom model |
