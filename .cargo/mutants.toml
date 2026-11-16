@@ -3,3 +3,6 @@ additional_cargo_args = ["--all-features", "--locked"]
 
 # Build automation, not product code.
 exclude_globs = ["xtask/**", "**/build.rs"]
+
+# Compiled only under `cfg(fuzzing)`, which no test build sets; the fuzz target covers them (ADR 0015).
+exclude_re = ["open_bytes", "SymphoniaDecoder::from_bytes"]

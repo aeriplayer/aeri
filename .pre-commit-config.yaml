@@ -228,7 +228,8 @@ repos:
         shell: sh
         entry: |
           cd fuzz && mkdir -p corpus/decode &&
-          cargo fuzz run decode corpus/decode ../crates/aeri-decode/tests/fixtures -- \
+          cargo fuzz run --target "$(rustc -vV | sed -n 's/^host: //p')" \
+            decode corpus/decode ../crates/aeri-decode/tests/fixtures -- \
             -max_total_time="${FUZZ_SECONDS:-60}" -timeout=10
         always_run: true
         pass_filenames: false
