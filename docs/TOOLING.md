@@ -50,6 +50,7 @@ The `# frozen: vX` and `# vX` markers beside SHAs are data: Renovate reads them 
 
 | Hook | Why it exists in this form |
 | --- | --- |
+| `typos` | Reports misspellings in prose, comments and identifiers, and never rewrites a file: its default `--write-changes` once "corrected" a dependency's method name and broke the build. A false positive goes in `_typos.toml` as the exact identifier, never a whole word. |
 | `cargo-nextest` | One process per test, hung tests killed, no retries (`.config/nextest.toml`). A run that finds no tests fails. |
 | `cargo-doctest` | nextest does not run documentation examples. |
 | `cargo-hack` | Every feature combination must compile alone, so a gated boundary such as `aeri-audio`'s `test-util` feature cannot rot unnoticed. |

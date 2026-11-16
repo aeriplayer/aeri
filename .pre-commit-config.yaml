@@ -11,7 +11,6 @@ priorities:
   fix-eof: 1
   fix-eol: 2
   fix-bom: 3
-  fix-typos: 4
   fix-toml: 5
   fix-markdown: 6
   fix-rust: 7
@@ -85,7 +84,7 @@ repos:
   - repo: https://github.com/crate-ci/typos
     rev: 276087d9a4f06398b3e04825487805e2d7375888 # frozen: v1.52.2
     hooks:
-      - { id: typos, priority: fix-typos }
+      - { id: typos, priority: check, args: [--force-exclude] }
 
   - repo: https://github.com/ComPWA/taplo-pre-commit
     rev: ade0f95ddcf661c697d4670d2cfcbe95d0048a0a # frozen: v0.9.3
