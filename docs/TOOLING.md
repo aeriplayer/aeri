@@ -1,6 +1,6 @@
 # Tooling rationale
 
-Why the repository's configuration files are shaped the way they are. The files themselves carry no prose beyond a line where a reader would otherwise "fix" something correct (see [`RUST_STYLE.md` §12](RUST_STYLE.md#12-comments)). Commands are in [`README.md`](../README.md); which verification each kind of code needs is in
+Why the repository's configuration files are shaped the way they are. The files themselves carry no prose beyond a line where a reader would otherwise "fix" something correct (see [`RUST_STYLE.md` §12](RUST_STYLE.md#12-comments)). Commands are in [`AGENTS.md`](../AGENTS.md#4-commands); which verification each kind of code needs is in
 [`TESTING.md`](TESTING.md).
 
 ## One definition of "passes checks"
@@ -87,12 +87,12 @@ The mechanical half of the "defensible dependencies" pillar in
 
 ## Lint policy (`Cargo.toml`)
 
-Every rule in `README.md` that a compiler can check is checked in `[workspace.lints]`, and CI runs with `-D warnings`, so each `warn` is a hard failure. Suppress at one site with `#[expect(lint, reason = "…")]`, never `#[allow]`: `expect` fails once the code stops triggering the lint, so suppressions cannot go stale
+Every rule in `AGENTS.md` that a compiler can check is checked in `[workspace.lints]`, and CI runs with `-D warnings`, so each `warn` is a hard failure. Suppress at one site with `#[expect(lint, reason = "…")]`, never `#[allow]`: `expect` fails once the code stops triggering the lint, so suppressions cannot go stale
 ([`RUST_STYLE.md` §10](RUST_STYLE.md#10-suppressing-a-lint)).
 
 | Group | Intent |
 | --- | --- |
-| `unsafe_code`, `unsafe_op_in_unsafe_fn`, `undocumented_unsafe_blocks`, `multiple_unsafe_ops_per_block` | `unsafe` is denied everywhere. `aeri-audio` opts in once at its crate root when its first FFI call is written. Every block states its invariant and holds one operation. |
+| `unsafe_code`, `unsafe_op_in_unsafe_fn`, `undocumented_unsafe_blocks`, `multiple_unsafe_ops_per_block` | `unsafe` is denied everywhere. `aeri-audio` opts in item by item with `#[expect(unsafe_code, reason = …)]`, never crate-wide (ADR 0016). Every block states its invariant and holds one operation. |
 | `missing_docs`, `missing_debug_implementations`, `unreachable_pub`, `unnameable_types` | Public means public API, documented and printable. Anything else is `pub(crate)` or private. |
 | `unwrap_used`, `get_unwrap`, `todo`, `unimplemented`, `dbg_macro`, `print_stdout`, `print_stderr` | No panicking shortcuts or stray output outside tests (`clippy.toml` exempts test code). `expect("why this cannot fail")` stays allowed. Logging is `tracing`; binaries opt in to printing where output is the product. |
 | `allow_attributes*`, `unfulfilled_lint_expectations` | Suppressions are `#[expect]` with a reason, and a stale one is an error. |

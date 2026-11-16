@@ -1,6 +1,6 @@
 # aeri — Architecture
 
-This document is the authoritative reference for system design, structural constraints, and non-obvious decisions. Process, conventions, and build instructions live in `README.md`. Architectural decisions are recorded as ADRs in `docs/adr/`; the rules for when one is required are in [`adr/README.md`](adr/README.md). Rust conventions are in
+This document is the authoritative reference for system design, structural constraints, and non-obvious decisions. Process and conventions live in [`AGENTS.md`](../AGENTS.md); build instructions in [`README.md`](../README.md). Architectural decisions are recorded as ADRs in `docs/adr/`; the rules for when one is required are in [`adr/README.md`](adr/README.md). Rust conventions are in
 [`RUST_STYLE.md`](RUST_STYLE.md).
 
 ---
