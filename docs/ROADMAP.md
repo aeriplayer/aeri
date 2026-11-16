@@ -47,7 +47,7 @@ Small enough to fold into the start of Phase 3. Both phases are specified step b
 - [x] `aeri-audio`: `CoreAudioSink`, the real-time thread, `rtrb` ring buffer, atomics for paused and flush ([ADR 0003](adr/0003-native-output-backends.md))
 - [ ] `aeri-audio`: `PipeWireSink`; report the negotiated rate
 - [x] `aeri-engine`: the playback actor ([ADR 0004](adr/0004-engine-is-an-actor.md)) with a current track and a next slot ([ADR 0005](adr/0005-engine-plays-current-and-next.md))
-- [ ] `aeri-cli`: `play <path>` in the foreground
+- [x] `aeri-cli`: `play <path>` in the foreground
 - [x] Integration tests through `FakeSink`: sample counts, pause, seek, gapless and re-init transitions
 
 ---

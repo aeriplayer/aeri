@@ -4,14 +4,13 @@ A music player written in Rust for macOS and Linux, in the tradition of foobar20
 
 ## Status
 
-aeri cannot yet play a file from the command line. Phase 2 (core playback types) is complete. **Phase 3, first audio, is in progress**, specified step by step in
+On macOS, `aeri play <file>` plays a FLAC or MP3 file through the default output. Phase 2 (core playback types) is complete. **Phase 3, first audio, is complete apart from the Linux sink**, specified step by step in
 [`docs/design/phase-2-3-playback.md`](docs/design/phase-2-3-playback.md):
 
-- Steps 2–5 are done: `OutputSink` and `FakeSink`; the FLAC and MP3 decoder, fuzzed; `CoreAudioSink`, which passed its listening test on macOS; and the playback engine.
-- **Next: Step 6, `aeri play <path>`.**
-- The PipeWire sink for Linux is a separate step and needs a Linux machine.
+- Steps 1–6 are done: the core types; `OutputSink` and `FakeSink`; the FLAC and MP3 decoder, fuzzed; `CoreAudioSink`; the playback engine; and `aeri play`, each checked by hand where the brief asks.
+- **Remaining: the PipeWire sink for Linux**, its own step, which needs a Linux machine. Until then `aeri play` fails on Linux with a readable error.
 
-Five crates exist: `aeri-core`, `aeri-audio`, `aeri-decode`, `aeri-engine`, `aeri-cli`. `aeri-core` holds the playback types, `aeri-audio` the `OutputSink` trait, `CoreAudioSink`, and the test `FakeSink`, `aeri-decode` FLAC and MP3 decoding, and `aeri-engine` the playback actor. `aeri-cli` is still a stub. Planned crates are created in the phase that first needs them, not scaffolded early.
+Five crates exist: `aeri-core`, `aeri-audio`, `aeri-decode`, `aeri-engine`, `aeri-cli`. `aeri-core` holds the playback types, `aeri-audio` the `OutputSink` trait, `CoreAudioSink`, and the test `FakeSink`, `aeri-decode` FLAC and MP3 decoding, `aeri-engine` the playback actor, and `aeri-cli` the `aeri` binary. Planned crates are created in the phase that first needs them, not scaffolded early.
 
 Update this section whenever a step or phase completes.
 
