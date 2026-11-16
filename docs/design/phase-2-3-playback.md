@@ -14,7 +14,7 @@ ADRs [0003](../adr/0003-native-output-backends.md),
 ## Outcome
 
 ```bash
-cargo run -p aeri-cli -- play tests/fixtures/sine.flac
+cargo run -p aeri-cli -- play crates/aeri-decode/tests/fixtures/sine.flac
 ```
 
 plays the file through the default output device, prints position as it goes, stops cleanly on Ctrl-C or end of track, and exits 0. Every step below lands with its tests, and `prek run --all-files` plus `prek run --all-files --stage pre-push` stay green.
@@ -133,7 +133,7 @@ pub trait OutputSink: Send {
 
 `SinkError` is a `thiserror` enum, `#[non_exhaustive]`, with variants for the failures a caller can act on differently (no device, format refused, device lost) and the platform error kept as `#[source]`.
 
-`FakeSink` implements the trait by recording into memory, with knobs for tests: a capacity (to exercise back-pressure), a spec to "negotiate" (to exercise the mismatch path), and a log of calls (`configure`, `flush`) so tests can assert on re-inits. It lives in `aeri-audio` behind a `test-util` cargo feature so `aeri-engine`'s tests can enable it as a dev-dependency without shipping it.
+`FakeSink` implements the trait by recording into memory, with knobs for tests: a capacity (to exercise back-pressure), a spec to "negotiate" (to exercise the mismatch path), a log of calls (`configure`, `flush`) so tests can assert on re-inits, and a device budget (`hold`, `allow`, `release` on its observer) so a test decides when the fake device plays and no engine test races the end of a one-second fixture. It lives in `aeri-audio` behind a `test-util` cargo feature so `aeri-engine`'s tests can enable it as a dev-dependency without shipping it.
 
 Done when: `FakeSink` has tests for back-pressure (partial acceptance, whole frames only), pause, flush, and `frames_played`.
 
@@ -172,13 +172,9 @@ Done when:
 
 ## Step 4 — `aeri-audio`: a real device sink
 
-Write the sink for the platform you are developing on first (`CoreAudioSink` on macOS), behind `cfg(target_os)`. The other platform's sink is its own step and its own commit.
+Write the sink for the platform you are developing on first (`CoreAudioSink` on macOS, over `coreaudio-rs`), behind `cfg(target_os)`. The other platform's sink is its own step and its own commit. The bridge between the sink and the callback is specified in [ADR 0016](../adr/0016-real-time-bridge.md); the macOS rate policy, with no hog mode, in [ADR 0017](../adr/0017-bit-perfect-without-hog-mode.md).
 
-This is the first `unsafe` in the project. Opt in once at the crate root:
-
-```rust
-#![expect(unsafe_code, reason = "FFI to the platform audio API and the real-time bridge")]
-```
+`coreaudio-rs` provides a safe `AudioUnit`, so the sink itself needs no `unsafe`. Where `unsafe` is needed in `aeri-audio`, opt in on the item with `#[expect(unsafe_code, reason = "…")]`.
 
 The real-time callback is the most constrained code in aeri. Inside it:
 
@@ -186,18 +182,16 @@ The real-time callback is the most constrained code in aeri. Inside it:
 - **No locks.** No `Mutex`, `RwLock`, channel send/recv, or `OnceLock` initialisation.
 - **No syscalls** beyond what the audio API itself performs. No I/O, no `thread::park`.
 - **No panics.** No indexing that can go out of bounds, no `unwrap`/`expect`, no arithmetic that can overflow in debug. A panic across FFI is undefined behaviour.
-- **Inputs are exactly:** the `rtrb` consumer, and atomics (`paused`, a flush generation, the `frames_played` counter). Underrun writes silence and bumps an atomic counter that a normal thread logs later.
+- **Inputs are exactly:** the `rtrb` consumer, and the `Relaxed` atomics of ADR 0016 (`paused`, `flush_at`, `read_pos`, `underruns`). Underrun writes silence and bumps `underruns`, which the sink logs from its own thread.
 
-Use `Ordering::Relaxed` for independent counters and flags; if you find yourself needing a stronger ordering to make two atomics agree, the design is wrong — put both facts in one atomic.
-
-Test the callback body as a plain function over a slice, off the audio thread, and run it under an allocation guard (the `assert_no_alloc` crate, as a dev-dependency — check it is still maintained first) so an accidental allocation fails a test, not a listening session.
+Test the callback body as a plain function over a slice, off the audio thread, inside the in-house allocation guard of [ADR 0018](../adr/0018-real-time-verification.md), so an accidental allocation fails a test, not a listening session.
 
 Done when:
 
 - a manual run plays a sine through the speakers with no audible glitches;
 - the callback function has unit tests for normal fill, underrun, pause, and flush, run under the allocation guard;
 - those tests pass under Miri (`prek run miri --stage manual --all-files`); tests that call the platform API are marked `#[cfg_attr(miri, ignore)]` with the reason;
-- the hand-off between producer and callback (ring buffer plus the pause and flush atomics) has a `loom` model test showing that no interleaving plays stale samples after a flush or loses frames across a pause. `loom` is a dev-dependency behind `cfg(loom)`; adding its CI job is new tooling, so raise it with the user.
+- the `loom` model of ADR 0018 shows that no interleaving mixes pre-flush and post-flush audio in one device buffer, plays a post-flush sample twice or out of order, or loses or repeats frames across a pause. It runs from a manual-stage `loom` hook, and in CI on pull requests that change `aeri-audio`.
 
 ## Step 5 — `aeri-engine`: the playback actor
 
@@ -247,7 +241,7 @@ Done when these integration tests pass against `FakeSink`:
 
 1. Play one fixture → the sink received exactly the decoded frame count, not silence; observed states go `Buffering → Playing → Stopped`.
 2. Pause → `frames_played` stops advancing; resume → it continues; no frames lost.
-3. Seek to 0.5 s → sink was flushed once; total frames ≈ half the track.
+3. Seek to 0.5 s → sink was flushed once; frames played after the flush ≈ half the track.
 4. `play` then `set_next` with the same spec → exactly one `configure`, frames = sum of both, and the state's `track` changes without passing through `Stopped`.
 5. `play` then `set_next` with a different spec → two `configure` calls, in order.
 6. A missing file → `play` returns `Err`, state stays `Stopped`.
@@ -261,7 +255,7 @@ Done when these integration tests pass against `FakeSink`:
 - `main` returns `anyhow::Result<()>`; a small `#[tokio::main(flavor = "current_thread")]` runtime is enough.
 - Depend on `aeri-engine` and `aeri-core` only, and build the engine with `Engine::with_default_output()`. Depending on the engine directly is a temporary exception that ends when `aeri-player` is created in Phase 4 (ADR 0006).
 - Print progress from `subscribe()`; `tokio::select!` it against `tokio::signal::ctrl_c()`. Exit when the state returns to `Stopped`.
-- User-facing output goes through one module that carries `#![expect(clippy::print_stdout, reason = "CLI output is the product")]`. Diagnostics go through `tracing`, initialised to stderr.
+- User-facing output goes through one module, whose functions write to an `impl Write` that `main` sets to stdout, so tests can assert on the exact text. Diagnostics go through `tracing`, initialised to stderr.
 
 Done when: the outcome at the top of this document works by hand, and an integration test runs the binary against a missing path and asserts a non-zero exit and a readable error.
 

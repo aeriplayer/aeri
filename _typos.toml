@@ -1,0 +1,4 @@
+# Third-party identifiers typos would "correct"; only exact identifiers, never whole words.
+[default.extend-identifiers]
+# pipewire::buffer::Buffer::datas_mut (ADR 0019).
+datas_mut = "datas_mut"

@@ -1,5 +1,18 @@
 test_tool             = "nextest"
 additional_cargo_args = ["--all-features", "--locked"]
 
-# Build automation, not product code.
-exclude_globs = ["xtask/**", "**/build.rs"]
+# Build automation, not product code; and the macOS device sink, which CI's Linux runner
+# cannot compile and which is verified by hand (brief, Step 4).
+exclude_globs = ["xtask/**", "**/build.rs", "crates/aeri-audio/src/coreaudio.rs"]
+
+# Compiled only under `cfg(fuzzing)`, which no test build sets; the fuzz target covers them (ADR 0015).
+exclude_re = [
+    "open_bytes",
+    "SymphoniaDecoder::from_bytes",
+    # Only decides whether a warning is logged; no test reads the log.
+    "replace != with == in Playback::start",
+    # Only connects to a PipeWire server, which CI lacks; verified by hand (ADR 0019).
+    'replace run -> Result<\(\), pw::Error> with Ok\(\(\)\)$',
+    # Only logs the graph rate; `resamples` holds the decision and is tested.
+    'replace report_rate with \(\)$',
+]

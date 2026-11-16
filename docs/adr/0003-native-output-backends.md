@@ -1,6 +1,6 @@
 # ADR 0003 — Native output backends; bit-perfect and gapless claims are scoped
 
-- **Status:** Accepted
+- **Status:** Accepted; decision 2 and its macOS resampler consequence superseded by [ADR 0017](0017-bit-perfect-without-hog-mode.md)
 - **Date:** 2026-11-15
 
 ## Context

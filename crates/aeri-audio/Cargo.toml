@@ -7,7 +7,26 @@ repository.workspace   = true
 authors.workspace      = true
 rust-version.workspace = true
 publish.workspace      = true
-description            = "Audio output: OutputSink trait, native CoreAudio/PipeWire backends, real-time thread"
+description            = "Audio output: the OutputSink trait, native backends, and the real-time thread"
 
 [lints]
 workspace = true
+
+[features]
+test-util = []
+
+[dependencies]
+aeri-core.workspace = true
+rtrb.workspace      = true
+thiserror.workspace = true
+
+[target.'cfg(target_os = "macos")'.dependencies]
+coreaudio-rs.workspace = true
+tracing.workspace      = true
+
+[target.'cfg(target_os = "linux")'.dependencies]
+pipewire.workspace = true
+tracing.workspace  = true
+
+[target.'cfg(loom)'.dev-dependencies]
+loom.workspace = true

@@ -25,30 +25,30 @@ Phases run from scaffolding to a foobar2000-class desktop player ([ADR 0001](adr
 
 ---
 
-## Phase 2 — Core playback types
+## Phase 2 — Core playback types ✓
 
 > `aeri-core` defines what playback needs, and nothing more.
 
 Small enough to fold into the start of Phase 3. Both phases are specified step by step in [`design/phase-2-3-playback.md`](design/phase-2-3-playback.md).
 
-- [ ] `SampleRate`, `Channels`, `StreamSpec`
-- [ ] Minimal `Track`: source, duration, optional title / artist / album ([ADR 0009](adr/0009-open-tag-metadata.md))
-- [ ] `PlaybackState`: stopped, or active with transport, position, and output spec
-- [ ] Unit tests for the type invariants
+- [x] `SampleRate`, `Channels`, `StreamSpec`
+- [x] Minimal `Track`: source, duration, optional title / artist / album ([ADR 0009](adr/0009-open-tag-metadata.md))
+- [x] `PlaybackState`: stopped, or active with transport, position, and output spec
+- [x] Unit tests for the type invariants
 
 ---
 
-## Phase 3 — First audio
+## Phase 3 — First audio ✓
 
 > `aeri play file.flac` produces sound. The decoder, engine, and sink are proven to compose.
 
-- [ ] `OutputSink` trait and `FakeSink` in `aeri-audio`
-- [ ] `aeri-decode`: `Decoder` over symphonia; FLAC and MP3 ([ADR 0007](adr/0007-symphonia-flac-mp3-first.md))
-- [ ] `aeri-audio`: `CoreAudioSink`, the real-time thread, `rtrb` ring buffer, atomics for paused and flush ([ADR 0003](adr/0003-native-output-backends.md))
-- [ ] `aeri-audio`: `PipeWireSink`; report the negotiated rate
-- [ ] `aeri-engine`: the playback actor ([ADR 0004](adr/0004-engine-is-an-actor.md)) with a current track and a next slot ([ADR 0005](adr/0005-engine-plays-current-and-next.md))
-- [ ] `aeri-cli`: `play <path>` in the foreground
-- [ ] Integration tests through `FakeSink`: sample counts, pause, seek, gapless and re-init transitions
+- [x] `OutputSink` trait and `FakeSink` in `aeri-audio`
+- [x] `aeri-decode`: `Decoder` over symphonia; FLAC and MP3 ([ADR 0007](adr/0007-symphonia-flac-mp3-first.md))
+- [x] `aeri-audio`: `CoreAudioSink`, the real-time thread, `rtrb` ring buffer, atomics for paused and flush ([ADR 0003](adr/0003-native-output-backends.md))
+- [x] `aeri-audio`: `PipeWireSink`; report the negotiated rate, as a log line for now ([ADR 0019](adr/0019-pipewire-stream-on-its-own-loop.md))
+- [x] `aeri-engine`: the playback actor ([ADR 0004](adr/0004-engine-is-an-actor.md)) with a current track and a next slot ([ADR 0005](adr/0005-engine-plays-current-and-next.md))
+- [x] `aeri-cli`: `play <path>` in the foreground
+- [x] Integration tests through `FakeSink`: sample counts, pause, seek, gapless and re-init transitions
 
 ---
 
@@ -62,7 +62,7 @@ Small enough to fold into the start of Phase 3. Both phases are specified step b
 - [ ] The queue; stop after current
 - [ ] The engine's "took the next track" event, and the player refilling the slot
 - [ ] Create `aeri-dsp`: `DspNode`, the chain, a registry ([ADR 0002](adr/0002-compiled-in-extension-points.md))
-- [ ] Volume and ReplayGain nodes; `rubato` resampler for refused device rates
+- [ ] Volume and ReplayGain nodes; `rubato` resampler where PipeWire refuses a rate (CoreAudio converts on macOS, ADR 0017)
 - [ ] `aeri-cli`: `play <paths…>`, directories, M3U files; interactive transport keys
 - [ ] Gapless verified end to end across a playlist
 

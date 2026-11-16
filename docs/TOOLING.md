@@ -1,6 +1,6 @@
 # Tooling rationale
 
-Why the repository's configuration files are shaped the way they are. The files themselves carry no prose beyond a line where a reader would otherwise "fix" something correct (see [`RUST_STYLE.md` §12](RUST_STYLE.md#12-comments)). Commands are in [`README.md`](../README.md); which verification each kind of code needs is in
+Why the repository's configuration files are shaped the way they are. The files themselves carry no prose beyond a line where a reader would otherwise "fix" something correct (see [`RUST_STYLE.md` §12](RUST_STYLE.md#12-comments)). Commands are in [`AGENTS.md`](../AGENTS.md#4-commands); which verification each kind of code needs is in
 [`TESTING.md`](TESTING.md).
 
 ## One definition of "passes checks"
@@ -50,12 +50,15 @@ The `# frozen: vX` and `# vX` markers beside SHAs are data: Renovate reads them 
 
 | Hook | Why it exists in this form |
 | --- | --- |
-| `cargo-nextest` | One process per test, hung tests killed, no retries (`.config/nextest.toml`). `--no-tests=pass` only matters while crates are empty; remove it with the first test. |
+| `typos` | Reports misspellings in prose, comments and identifiers, and never rewrites a file: its default `--write-changes` once "corrected" a dependency's method name and broke the build. A false positive goes in `_typos.toml` as the exact identifier, never a whole word. |
+| `cargo-nextest` | One process per test, hung tests killed, no retries (`.config/nextest.toml`). A run that finds no tests fails. |
 | `cargo-doctest` | nextest does not run documentation examples. |
 | `cargo-hack` | Every feature combination must compile alone, so a gated boundary such as `aeri-audio`'s `test-util` feature cannot rot unnoticed. |
 | `coverage` | Runs the tests once, then reports per floor: the workspace, and each pure-logic crate at 100% (`--package`). A crate with no code fails a 100% report, so each crate's line is added with its first code. Excludes `xtask/` and `build.rs`: build automation, not product code. The floor is a tripwire, not a goal ([`TESTING.md`](TESTING.md)). |
 | `mutants` | Mutates only the lines that differ from the base branch, then requires the tests to notice every mutation. Excluded mutants are named in `.cargo/mutants.toml` with the reason. |
 | `miri` | Needs `rustup toolchain install nightly --component miri`. Tests that cannot run under Miri (FFI, real I/O) opt out with `#[cfg_attr(miri, ignore)]`. |
+| `loom` | Builds with `--cfg loom` into `target/loom`, so the instrumented build never evicts the normal one from the cache, and runs only the `loom_model` tests, in release mode because `loom` explores every interleaving ([ADR 0018](adr/0018-real-time-verification.md)). |
+| `fuzz` | Runs `cargo fuzz` from `fuzz/`, whose own `rust-toolchain.toml` pins the nightly libFuzzer needs (`rustup toolchain install` there once). It passes the host triple as `--target` because the prebuilt Linux `cargo-fuzz` is a musl binary and would otherwise build for musl, which AddressSanitizer refuses. `FUZZ_SECONDS` sets the run length; CI uses 60 on pull requests and 600 daily. `fuzz/` is its own workspace, outside cargo-deny and cargo-shear ([ADR 0015](adr/0015-fuzzing-with-cargo-fuzz.md)). |
 | `cargo-deny` | Runs at push because it reads the advisory database over the network. |
 | `cargo-shear` | Finds unused and misplaced dependencies from source references, across every `cfg` at once, including dev-dependencies, which Cargo's own `unused_dependencies` lint does not check. A false positive goes in `[package.metadata.cargo-shear] ignored` with a reason beside it. |
 | `check-deps` | `cargo xtask check-deps`: the dependency rules cargo-deny cannot express (below). |
@@ -84,12 +87,12 @@ The mechanical half of the "defensible dependencies" pillar in
 
 ## Lint policy (`Cargo.toml`)
 
-Every rule in `README.md` that a compiler can check is checked in `[workspace.lints]`, and CI runs with `-D warnings`, so each `warn` is a hard failure. Suppress at one site with `#[expect(lint, reason = "…")]`, never `#[allow]`: `expect` fails once the code stops triggering the lint, so suppressions cannot go stale
+Every rule in `AGENTS.md` that a compiler can check is checked in `[workspace.lints]`, and CI runs with `-D warnings`, so each `warn` is a hard failure. Suppress at one site with `#[expect(lint, reason = "…")]`, never `#[allow]`: `expect` fails once the code stops triggering the lint, so suppressions cannot go stale
 ([`RUST_STYLE.md` §10](RUST_STYLE.md#10-suppressing-a-lint)).
 
 | Group | Intent |
 | --- | --- |
-| `unsafe_code`, `unsafe_op_in_unsafe_fn`, `undocumented_unsafe_blocks`, `multiple_unsafe_ops_per_block` | `unsafe` is denied everywhere. `aeri-audio` opts in once at its crate root when its first FFI call is written. Every block states its invariant and holds one operation. |
+| `unsafe_code`, `unsafe_op_in_unsafe_fn`, `undocumented_unsafe_blocks`, `multiple_unsafe_ops_per_block` | `unsafe` is denied everywhere. `aeri-audio` opts in item by item with `#[expect(unsafe_code, reason = …)]`, never crate-wide (ADR 0016). Every block states its invariant and holds one operation. |
 | `missing_docs`, `missing_debug_implementations`, `unreachable_pub`, `unnameable_types` | Public means public API, documented and printable. Anything else is `pub(crate)` or private. |
 | `unwrap_used`, `get_unwrap`, `todo`, `unimplemented`, `dbg_macro`, `print_stdout`, `print_stderr` | No panicking shortcuts or stray output outside tests (`clippy.toml` exempts test code). `expect("why this cannot fail")` stays allowed. Logging is `tracing`; binaries opt in to printing where output is the product. |
 | `allow_attributes*`, `unfulfilled_lint_expectations` | Suppressions are `#[expect]` with a reason, and a stale one is an error. |

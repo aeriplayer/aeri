@@ -19,11 +19,36 @@ rust-version = "1.100.0"
 publish      = false
 
 [workspace.dependencies]
-anyhow         = { version = "1.0.104", default-features = false, features = ["std"] }
+aeri-audio  = { path = "crates/aeri-audio" }
+aeri-core   = { path = "crates/aeri-core" }
+aeri-decode = { path = "crates/aeri-decode" }
+aeri-engine = { path = "crates/aeri-engine" }
+
+anyhow = { version = "1.0.104", default-features = false, features = ["std"] }
 cargo_metadata = { version = "0.23.1", default-features = false }
-fs-err         = { version = "3.3.2", default-features = false }
-serde          = { version = "1.0.229", default-features = false, features = ["derive", "std"] }
-toml           = { version = "1.2.1", default-features = false, features = ["parse", "serde", "std"] }
+clap = { version = "4.6.7", default-features = false, features = [
+    "derive",
+    "error-context",
+    "help",
+    "std",
+    "usage",
+] }
+coreaudio-rs = { version = "0.14.2", default-features = false, features = [
+    "audio_unit",
+    "core_audio",
+] }
+fs-err = { version = "3.3.2", default-features = false }
+loom = { version = "0.7.3", default-features = false }
+pipewire = { version = "0.10.1", default-features = false, features = ["v0_3_49"] }
+proptest = { version = "1.12.0", default-features = false, features = ["std"] }
+rtrb = { version = "0.4.1", default-features = false }
+serde = { version = "1.0.229", default-features = false, features = ["derive", "std"] }
+symphonia = { version = "0.6.1", default-features = false, features = ["flac", "mp3"] }
+thiserror = { version = "2.0.21", default-features = false }
+toml = { version = "1.2.1", default-features = false, features = ["parse", "serde", "std"] }
+tokio = { version = "1.54.1", default-features = false, features = ["sync"] }
+tracing = { version = "0.1.44", default-features = false, features = ["std"] }
+tracing-subscriber = { version = "0.3.23", default-features = false, features = ["fmt", "std"] }
 
 # Rationale for each group: docs/TOOLING.md.
 
@@ -40,6 +65,7 @@ unreachable_pub               = "warn"
 unnameable_types              = "warn"
 unused_qualifications         = "warn"
 unfulfilled_lint_expectations = "warn"
+unexpected_cfgs               = { level = "warn", check-cfg = ["cfg(fuzzing)", "cfg(loom)"] }
 
 [workspace.lints.rustdoc]
 broken_intra_doc_links  = "deny"

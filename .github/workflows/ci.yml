@@ -32,6 +32,8 @@ jobs:
     outputs:
       code: ${{ steps.changes.outputs.code }}
       release: ${{ steps.changes.outputs.release }}
+      fuzz: ${{ steps.changes.outputs.fuzz }}
+      audio: ${{ steps.changes.outputs.audio }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -44,8 +46,12 @@ jobs:
           EVENT: ${{ github.event_name }}
         run: |
           if [[ "$EVENT" != "pull_request" ]]; then
-            echo "code=true" >> "$GITHUB_OUTPUT"
-            echo "release=true" >> "$GITHUB_OUTPUT"
+            {
+              echo "code=true"
+              echo "release=true"
+              echo "fuzz=true"
+              echo "audio=true"
+            } >> "$GITHUB_OUTPUT"
             exit 0
           fi
           changed() { ! git diff --quiet HEAD^1 HEAD -- "$@"; }
@@ -60,6 +66,16 @@ jobs:
             echo "release=true" >> "$GITHUB_OUTPUT"
           else
             echo "release=false" >> "$GITHUB_OUTPUT"
+          fi
+          if changed fuzz/ crates/aeri-decode/ crates/aeri-core/ Cargo.toml Cargo.lock; then
+            echo "fuzz=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "fuzz=false" >> "$GITHUB_OUTPUT"
+          fi
+          if changed crates/aeri-audio/ crates/aeri-core/ Cargo.toml Cargo.lock; then
+            echo "audio=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "audio=false" >> "$GITHUB_OUTPUT"
           fi
 
   checks:
@@ -187,6 +203,55 @@ jobs:
 
       - name: cargo miri test
         run: prek run miri --all-files --stage manual
+
+  # ADR 0018.
+  loom:
+    name: loom
+    needs: plan
+    if: needs.plan.outputs.audio == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: $/.github/actions/setup
+        with:
+          cache-key: loom
+
+      - name: loom model of the real-time bridge
+        run: prek run loom --all-files --stage manual
+
+  # ADR 0015. The daily ten-minute run is in fuzz.yml.
+  fuzz:
+    name: fuzz
+    needs: plan
+    if: needs.plan.outputs.fuzz == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: $/.github/actions/setup
+        with:
+          tools: "cargo-fuzz"
+          cache-key: fuzz
+
+      - name: Install the fuzzing nightly
+        working-directory: fuzz
+        run: rustup toolchain install # reads fuzz/rust-toolchain.toml
+
+      - name: Fuzz the decoder for 60 seconds
+        env:
+          FUZZ_SECONDS: "60"
+        run: prek run fuzz --all-files --stage manual
 
   cooldown:
     name: crate cooldown
