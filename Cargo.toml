@@ -22,6 +22,7 @@ publish      = false
 anyhow         = { version = "1.0.104", default-features = false, features = ["std"] }
 cargo_metadata = { version = "0.23.1", default-features = false }
 fs-err         = { version = "3.3.2", default-features = false }
+proptest       = { version = "1.12.0", default-features = false, features = ["std"] }
 serde          = { version = "1.0.229", default-features = false, features = ["derive", "std"] }
 toml           = { version = "1.2.1", default-features = false, features = ["parse", "serde", "std"] }
 

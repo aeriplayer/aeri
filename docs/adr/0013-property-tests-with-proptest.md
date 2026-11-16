@@ -17,7 +17,7 @@ The alternatives on the table were `proptest`, `quickcheck`, and hand-written sw
 
 ## Consequences
 
-- Three crates with build scripts enter the dev-dependency graph and are named in `deny.toml`: `getrandom` (detects the memory sanitizer), `libc` (reads `rustc --version` and target cfgs, and on FreeBSD or Emscripten runs their version tools), and `num-traits` (one `autocfg` probe). Each build script was read in full on 2026-11-15, for the versions in `Cargo.lock`.
+- Three crates with build scripts enter the dev-dependency graph and are named in `deny.toml`: `getrandom` (detects the memory sanitizer), `libc` (reads `rustc --version` and target cfgs; runs `emcc` only for Emscripten targets, and `freebsd-version` only under its own `LIBC_CI`), and `num-traits` (one `autocfg` probe). Each build script was read in full on 2026-11-15, for the versions in `Cargo.lock`.
 - `proptest` 1.12.0 resolves `rand` 0.10.4, released on the day of this decision; the lockfile holds `rand` at 0.10.3 until 0.10.4 clears the seven-day cooldown.
 - Dev-dependencies only: nothing here ships in a binary.
 - Revisit if `proptest` stops being maintained, or if its build-script footprint grows.

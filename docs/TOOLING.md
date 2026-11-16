@@ -50,7 +50,7 @@ The `# frozen: vX` and `# vX` markers beside SHAs are data: Renovate reads them 
 
 | Hook | Why it exists in this form |
 | --- | --- |
-| `cargo-nextest` | One process per test, hung tests killed, no retries (`.config/nextest.toml`). `--no-tests=pass` only matters while crates are empty; remove it with the first test. |
+| `cargo-nextest` | One process per test, hung tests killed, no retries (`.config/nextest.toml`). A run that finds no tests fails. |
 | `cargo-doctest` | nextest does not run documentation examples. |
 | `cargo-hack` | Every feature combination must compile alone, so a gated boundary such as `aeri-audio`'s `test-util` feature cannot rot unnoticed. |
 | `coverage` | Runs the tests once, then reports per floor: the workspace, and each pure-logic crate at 100% (`--package`). A crate with no code fails a 100% report, so each crate's line is added with its first code. Excludes `xtask/` and `build.rs`: build automation, not product code. The floor is a tripwire, not a goal ([`TESTING.md`](TESTING.md)). |

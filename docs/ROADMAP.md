@@ -25,16 +25,16 @@ Phases run from scaffolding to a foobar2000-class desktop player ([ADR 0001](adr
 
 ---
 
-## Phase 2 — Core playback types
+## Phase 2 — Core playback types ✓
 
 > `aeri-core` defines what playback needs, and nothing more.
 
 Small enough to fold into the start of Phase 3. Both phases are specified step by step in [`design/phase-2-3-playback.md`](design/phase-2-3-playback.md).
 
-- [ ] `SampleRate`, `Channels`, `StreamSpec`
-- [ ] Minimal `Track`: source, duration, optional title / artist / album ([ADR 0009](adr/0009-open-tag-metadata.md))
-- [ ] `PlaybackState`: stopped, or active with transport, position, and output spec
-- [ ] Unit tests for the type invariants
+- [x] `SampleRate`, `Channels`, `StreamSpec`
+- [x] Minimal `Track`: source, duration, optional title / artist / album ([ADR 0009](adr/0009-open-tag-metadata.md))
+- [x] `PlaybackState`: stopped, or active with transport, position, and output spec
+- [x] Unit tests for the type invariants
 
 ---
 
