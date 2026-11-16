@@ -10,6 +10,15 @@ yanked  = "deny"
 version              = 2
 confidence-threshold = 0.93
 allow                = ["MIT", "Apache-2.0", "Unicode-3.0", "Zlib"]
+# ADR 0014: MPL-2.0 for symphonia only.
+exceptions = [
+    { crate = "symphonia", allow = ["MPL-2.0"] },
+    { crate = "symphonia-bundle-flac", allow = ["MPL-2.0"] },
+    { crate = "symphonia-bundle-mp3", allow = ["MPL-2.0"] },
+    { crate = "symphonia-common", allow = ["MPL-2.0"] },
+    { crate = "symphonia-core", allow = ["MPL-2.0"] },
+    { crate = "symphonia-metadata", allow = ["MPL-2.0"] },
+]
 
 [bans]
 multiple-versions    = "warn"

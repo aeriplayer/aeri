@@ -1,0 +1,15 @@
+# aeri-decode fixtures
+
+One second of a 440 Hz sine, stereo, 44.1 kHz, peaking near 0.088: FFmpeg's `sine` source has amplitude 1/8, and the mono-to-stereo upmix scales it by 1/√2. Generated with FFmpeg 9.0.2; the `bitexact` flags and `-map_metadata -1` keep the output byte-identical across runs.
+
+```bash
+ffmpeg -f lavfi -i "sine=frequency=440:sample_rate=44100:duration=1" -ac 2 \
+  -map_metadata -1 -fflags +bitexact -flags:a +bitexact -c:a flac sine.flac
+
+ffmpeg -f lavfi -i "sine=frequency=440:sample_rate=44100:duration=1" -ac 2 \
+  -map_metadata -1 -fflags +bitexact -flags:a +bitexact -c:a libmp3lame -b:a 128k sine.mp3
+
+printf 'This file is text, not FLAC.\n' > not-audio.flac
+```
+
+`sine.mp3` starts with an empty ID3v2 tag and carries a LAME header with the encoder delay and padding, as most MP3 files in the wild do. `not-audio.flac` checks that a misleading extension does not make a non-audio file decode.
