@@ -5,6 +5,10 @@ version = 4
 [[package]]
 name = "aeri-audio"
 version = "0.1.0"
+dependencies = [
+ "aeri-core",
+ "thiserror",
+]
 
 [[package]]
 name = "aeri-cli"

@@ -19,11 +19,14 @@ rust-version = "1.100.0"
 publish      = false
 
 [workspace.dependencies]
+aeri-core = { path = "crates/aeri-core" }
+
 anyhow         = { version = "1.0.104", default-features = false, features = ["std"] }
 cargo_metadata = { version = "0.23.1", default-features = false }
 fs-err         = { version = "3.3.2", default-features = false }
 proptest       = { version = "1.12.0", default-features = false, features = ["std"] }
 serde          = { version = "1.0.229", default-features = false, features = ["derive", "std"] }
+thiserror      = { version = "2.0.21", default-features = false }
 toml           = { version = "1.2.1", default-features = false, features = ["parse", "serde", "std"] }
 
 # Rationale for each group: docs/TOOLING.md.
