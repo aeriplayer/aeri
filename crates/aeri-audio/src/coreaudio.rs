@@ -5,7 +5,8 @@ use std::fmt;
 use aeri_core::StreamSpec;
 use coreaudio::audio_unit::audio_format::LinearPcmFlags;
 use coreaudio::audio_unit::macos_helpers::{
-    audio_unit_from_device_id, get_default_device_id, set_device_sample_rate,
+    audio_unit_from_device_id, get_available_sample_rates, get_default_device_id, get_device_name,
+    set_device_sample_rate,
 };
 use coreaudio::audio_unit::render_callback::{Args, data};
 use coreaudio::audio_unit::{AudioUnit, Element, SampleFormat, Scope, StreamFormat};
@@ -57,7 +58,7 @@ impl OutputSink for CoreAudioSink {
         let device = get_default_device_id(false).ok_or(SinkError::NoDevice)?;
         let rate = requested.sample_rate.get();
         if let Err(error) = set_device_sample_rate(device, f64::from(rate)) {
-            tracing::warn!(%error, rate, "output device kept its rate; CoreAudio will convert");
+            report_kept_rate(device, rate, error);
         }
 
         let refused = |error: coreaudio::Error| SinkError::FormatRefused {
@@ -125,5 +126,42 @@ impl OutputSink for CoreAudioSink {
         self.stream
             .as_ref()
             .is_none_or(|stream| stream.writer.is_drained())
+    }
+}
+
+/// Logs why the device stayed at its own rate (ADR 0017). A rate the device does not offer
+/// is routine, so it is `info`; a rate it offers but would not switch to is a `warn`.
+fn report_kept_rate(device: u32, rate: u32, error: coreaudio::Error) {
+    let name = get_device_name(device).unwrap_or_else(|_| "the output device".to_owned());
+    let ranges = get_available_sample_rates(device).unwrap_or_default();
+    let offered = ranges
+        .iter()
+        .map(|range| {
+            let (low, high) = (
+                format!("{:.0}", range.mMinimum),
+                format!("{:.0}", range.mMaximum),
+            );
+            if low == high {
+                low
+            } else {
+                format!("{low}-{high}")
+            }
+        })
+        .collect::<Vec<_>>()
+        .join(", ");
+    let wanted = f64::from(rate);
+    if ranges
+        .iter()
+        .any(|range| (range.mMinimum..=range.mMaximum).contains(&wanted))
+    {
+        tracing::warn!(
+            device = %name, offered, rate, %error,
+            "the device offers the stream's rate but did not switch to it; CoreAudio converts"
+        );
+    } else {
+        tracing::info!(
+            device = %name, offered, rate,
+            "the device does not offer the stream's rate; CoreAudio converts"
+        );
     }
 }

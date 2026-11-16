@@ -12,7 +12,8 @@ Without hog mode, two things still affect whether samples reach the device uncha
 
 ## Decision
 
-- `CoreAudioSink::configure` asks the default output device for the source sample rate. If the device does not offer that rate, it stays at its current rate and CoreAudio's output unit converts; aeri logs a warning naming both rates.
+- `CoreAudioSink::configure` asks the default output device for the source sample rate. If the device does not switch, it stays at its current rate and CoreAudio's output unit converts.
+- aeri reads the device's offered rates itself to say why. A rate the device does not offer is routine (Bluetooth headphones offer 24 and 48 kHz only), so it is logged at `info`, naming the device and the rates it offers. A rate the device offers but would not switch to is logged at `warn`, because that is a fault worth seeing.
 - The sink accepts the requested spec in either case and reports it as negotiated, because it can always consume it.
 - aeri never enables hog mode. If it is ever offered, it is an opt-in setting with its own ADR, after settings storage is decided.
 
