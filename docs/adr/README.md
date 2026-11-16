@@ -66,3 +66,4 @@ verified. Include the condition under which this should be revisited.
 | [0011](0011-gpui-and-layout-as-data.md) | The GUI is built on GPUI; layout is data |
 | [0012](0012-filesystem-through-fs-err.md) | Filesystem access goes through fs-err |
 | [0013](0013-property-tests-with-proptest.md) | Property tests use proptest |
+| [0014](0014-mpl-2-0-for-symphonia.md) | MPL-2.0 is allowed for symphonia's crates only |

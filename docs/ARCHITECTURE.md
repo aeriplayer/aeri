@@ -291,6 +291,7 @@ Resolve each before the crate that depends on it is written.
 - **Controlling a running instance.** `aeri pause` from a shell needs a way to reach the running player. MPRIS covers Linux. Decide before the CLI grows beyond `play`.
 - **DSP buffer layout.** Interleaved or planar inside the chain. Decide with `aeri-dsp`.
 - **GUI visual language.** Typography, spacing, colour. During the GUI phase.
+- **Third-party notices.** How each release artefact ships dependency licences and points to MPL source. Before the first release (ADR 0014).
 
 ### Resolved
 
@@ -309,3 +310,4 @@ Resolve each before the crate that depends on it is written.
 | GUI | GPUI; layout is data | [ADR 0011](adr/0011-gpui-and-layout-as-data.md) |
 | Filesystem errors | All file access through `fs-err`, so errors name their path | [ADR 0012](adr/0012-filesystem-through-fs-err.md) |
 | Property tests | `proptest`, std only, regressions committed | [ADR 0013](adr/0013-property-tests-with-proptest.md) |
+| Decoder licence | MPL-2.0 allowed for symphonia's crates only; notices required before release | [ADR 0014](adr/0014-mpl-2-0-for-symphonia.md) |
