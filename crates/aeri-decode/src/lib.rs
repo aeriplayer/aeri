@@ -58,3 +58,14 @@ pub fn open(source: &Source) -> Result<Box<dyn Decoder>, DecodeError> {
         _ => Err(DecodeError::Unsupported("this kind of source")),
     }
 }
+
+/// Probes in-memory `bytes`. Exists only for the fuzz target (ADR 0015).
+///
+/// # Errors
+///
+/// As for [`open`].
+#[cfg(fuzzing)]
+#[doc(hidden)]
+pub fn open_bytes(bytes: Vec<u8>) -> Result<Box<dyn Decoder>, DecodeError> {
+    Ok(Box::new(SymphoniaDecoder::from_bytes(bytes)?))
+}

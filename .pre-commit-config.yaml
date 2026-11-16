@@ -222,6 +222,19 @@ repos:
         stages: [manual]
         priority: manual
 
+      - id: fuzz
+        name: fuzz the decoder (cargo fuzz)
+        language: system
+        shell: sh
+        entry: |
+          cd fuzz && mkdir -p corpus/decode &&
+          cargo fuzz run decode corpus/decode ../crates/aeri-decode/tests/fixtures -- \
+            -max_total_time="${FUZZ_SECONDS:-60}" -timeout=10
+        always_run: true
+        pass_filenames: false
+        stages: [manual]
+        priority: manual
+
   - repo: https://github.com/EmbarkStudios/cargo-deny
     rev: bca0dde53651ee946720e4540b5ce2610bec8f06 # frozen: 0.20.2
     hooks:

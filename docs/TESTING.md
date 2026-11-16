@@ -33,7 +33,9 @@ The last three rows of "verification" have no everyday Python counterpart, and t
 | Every push | nextest, doctests, rustdoc, feature powerset, `cargo deny` | `prek run --all-files --stage pre-push` |
 | Every pull request (CI) | all of the above on three targets, plus coverage, mutation testing of the changed lines, Miri, the crate cooldown, and `dist plan` when release inputs change; documentation-only changes skip the build jobs | see `.github/workflows/ci.yml` |
 | Daily (CI) | `cargo deny` against new advisories | `.github/workflows/audit.yml` |
-| On demand | coverage, mutants, Miri locally | `prek run <hook> --stage manual --all-files` |
+| Every pull request touching the decoder (CI) | 60 seconds of fuzzing | `prek run fuzz --stage manual --all-files` |
+| Daily (CI) | 10 minutes of fuzzing | `.github/workflows/fuzz.yml` |
+| On demand | coverage, mutants, Miri, fuzzing locally | `prek run <hook> --stage manual --all-files`; `FUZZ_SECONDS` sets the fuzzing time |
 
 Install the tools once with `cargo xtask install-tools`.
 
@@ -64,7 +66,8 @@ Install the tools once with `cargo xtask install-tools`.
 
 Recorded here so the gap is visible rather than assumed away.
 
-- **Fuzzing and `loom`** have no code to act on yet. They are required by the design brief at the step that introduces a decoder and the real-time bridge. Fuzz targets are then built on every pull request, so they cannot stop compiling, and run on a daily schedule. `cfg(fuzzing)` and `cfg(loom)` are declared in `unexpected_cfgs`'s `check-cfg` in the same change.
+- **`loom`** has no code to act on yet. The design brief requires it at the step that introduces the real-time bridge; `cfg(loom)` is declared in `unexpected_cfgs`'s `check-cfg` in the same change.
+- **Fuzzing** covers the decoder only (`fuzz/`, [ADR 0015](adr/0015-fuzzing-with-cargo-fuzz.md)). Each parser added later gets its own target. The corpus is not kept between runs.
 - **Benchmarks** arrive with the DSP chain in Phase 4, built with the `profiling` profile. CI runs them under CodSpeed's instruction-counting mode, which gives stable numbers on shared runners where wall-clock timings are noise.
 - **Device sinks on Linux** cannot be exercised in CI and need a real machine.
 - **Coverage on macOS-only code** is not measured: the coverage job runs on Linux.

@@ -46,6 +46,7 @@ unreachable_pub               = "warn"
 unnameable_types              = "warn"
 unused_qualifications         = "warn"
 unfulfilled_lint_expectations = "warn"
+unexpected_cfgs               = { level = "warn", check-cfg = ["cfg(fuzzing)"] }
 
 [workspace.lints.rustdoc]
 broken_intra_doc_links  = "deny"

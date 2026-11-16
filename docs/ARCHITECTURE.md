@@ -311,3 +311,4 @@ Resolve each before the crate that depends on it is written.
 | Filesystem errors | All file access through `fs-err`, so errors name their path | [ADR 0012](adr/0012-filesystem-through-fs-err.md) |
 | Property tests | `proptest`, std only, regressions committed | [ADR 0013](adr/0013-property-tests-with-proptest.md) |
 | Decoder licence | MPL-2.0 allowed for symphonia's crates only; notices required before release | [ADR 0014](adr/0014-mpl-2-0-for-symphonia.md) |
+| Fuzzing | `cargo-fuzz` in its own workspace on a pinned nightly; CI on PRs and daily | [ADR 0015](adr/0015-fuzzing-with-cargo-fuzz.md) |

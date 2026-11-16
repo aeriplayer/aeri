@@ -43,7 +43,7 @@ Small enough to fold into the start of Phase 3. Both phases are specified step b
 > `aeri play file.flac` produces sound. The decoder, engine, and sink are proven to compose.
 
 - [x] `OutputSink` trait and `FakeSink` in `aeri-audio`
-- [ ] `aeri-decode`: `Decoder` over symphonia; FLAC and MP3 ([ADR 0007](adr/0007-symphonia-flac-mp3-first.md))
+- [x] `aeri-decode`: `Decoder` over symphonia; FLAC and MP3 ([ADR 0007](adr/0007-symphonia-flac-mp3-first.md))
 - [ ] `aeri-audio`: `CoreAudioSink`, the real-time thread, `rtrb` ring buffer, atomics for paused and flush ([ADR 0003](adr/0003-native-output-backends.md))
 - [ ] `aeri-audio`: `PipeWireSink`; report the negotiated rate
 - [ ] `aeri-engine`: the playback actor ([ADR 0004](adr/0004-engine-is-an-actor.md)) with a current track and a next slot ([ADR 0005](adr/0005-engine-plays-current-and-next.md))

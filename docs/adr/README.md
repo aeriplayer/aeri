@@ -67,3 +67,4 @@ verified. Include the condition under which this should be revisited.
 | [0012](0012-filesystem-through-fs-err.md) | Filesystem access goes through fs-err |
 | [0013](0013-property-tests-with-proptest.md) | Property tests use proptest |
 | [0014](0014-mpl-2-0-for-symphonia.md) | MPL-2.0 is allowed for symphonia's crates only |
+| [0015](0015-fuzzing-with-cargo-fuzz.md) | Decoders are fuzzed with cargo-fuzz on a pinned nightly |

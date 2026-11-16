@@ -1,0 +1,44 @@
+name: Fuzz
+
+on:
+  schedule:
+    - cron: "41 5 * * *"
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_NET_RETRY: 10
+  RUSTUP_MAX_RETRIES: 10
+
+jobs:
+  # ADR 0015. Pull requests get a 60-second run in ci.yml.
+  decode:
+    name: fuzz decode
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: $/.github/actions/setup
+        with:
+          tools: "cargo-fuzz"
+          cache-key: fuzz
+
+      - name: Install the fuzzing nightly
+        working-directory: fuzz
+        run: rustup toolchain install # reads fuzz/rust-toolchain.toml
+
+      - name: Fuzz the decoder for 10 minutes
+        env:
+          FUZZ_SECONDS: "600"
+        run: prek run fuzz --all-files --stage manual

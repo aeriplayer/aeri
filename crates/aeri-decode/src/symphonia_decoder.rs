@@ -38,6 +38,11 @@ impl SymphoniaDecoder {
         Self::from_media_source(Box::new(file.into_file()), &hint)
     }
 
+    #[cfg(fuzzing)]
+    pub(crate) fn from_bytes(bytes: Vec<u8>) -> Result<Self, DecodeError> {
+        Self::from_media_source(Box::new(std::io::Cursor::new(bytes)), &Hint::new())
+    }
+
     fn from_media_source(source: Box<dyn MediaSource>, hint: &Hint) -> Result<Self, DecodeError> {
         let stream = MediaSourceStream::new(source, MediaSourceStreamOptions::default());
         let reader = symphonia::default::get_probe()
