@@ -133,7 +133,7 @@ pub trait OutputSink: Send {
 
 `SinkError` is a `thiserror` enum, `#[non_exhaustive]`, with variants for the failures a caller can act on differently (no device, format refused, device lost) and the platform error kept as `#[source]`.
 
-`FakeSink` implements the trait by recording into memory, with knobs for tests: a capacity (to exercise back-pressure), a spec to "negotiate" (to exercise the mismatch path), and a log of calls (`configure`, `flush`) so tests can assert on re-inits. It lives in `aeri-audio` behind a `test-util` cargo feature so `aeri-engine`'s tests can enable it as a dev-dependency without shipping it.
+`FakeSink` implements the trait by recording into memory, with knobs for tests: a capacity (to exercise back-pressure), a spec to "negotiate" (to exercise the mismatch path), a log of calls (`configure`, `flush`) so tests can assert on re-inits, and a device budget (`hold`, `allow`, `release` on its observer) so a test decides when the fake device plays and no engine test races the end of a one-second fixture. It lives in `aeri-audio` behind a `test-util` cargo feature so `aeri-engine`'s tests can enable it as a dev-dependency without shipping it.
 
 Done when: `FakeSink` has tests for back-pressure (partial acceptance, whole frames only), pause, flush, and `frames_played`.
 
@@ -241,7 +241,7 @@ Done when these integration tests pass against `FakeSink`:
 
 1. Play one fixture → the sink received exactly the decoded frame count, not silence; observed states go `Buffering → Playing → Stopped`.
 2. Pause → `frames_played` stops advancing; resume → it continues; no frames lost.
-3. Seek to 0.5 s → sink was flushed once; total frames ≈ half the track.
+3. Seek to 0.5 s → sink was flushed once; frames played after the flush ≈ half the track.
 4. `play` then `set_next` with the same spec → exactly one `configure`, frames = sum of both, and the state's `track` changes without passing through `Stopped`.
 5. `play` then `set_next` with a different spec → two `configure` calls, in order.
 6. A missing file → `play` returns `Err`, state stays `Stopped`.

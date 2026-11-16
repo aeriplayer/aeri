@@ -3,6 +3,7 @@
 use std::error::Error;
 use std::fmt;
 use std::num::{NonZeroU16, NonZeroU32};
+use std::time::Duration;
 
 /// Sample rate in Hz. Never zero.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -22,6 +23,15 @@ impl SampleRate {
     #[must_use]
     pub const fn get(self) -> u32 {
         self.0.get()
+    }
+
+    /// How long `frames` frames last at this rate, rounded down to the nanosecond.
+    #[must_use]
+    pub fn duration_of(self, frames: u64) -> Duration {
+        let rate = u64::from(self.get());
+        // `rem < rate <= u32::MAX`, so `rem * 1e9` cannot overflow a u64.
+        let rem = frames % rate;
+        Duration::from_secs(frames / rate) + Duration::from_nanos(rem * 1_000_000_000 / rate)
     }
 }
 
@@ -143,7 +153,22 @@ mod tests {
         );
     }
 
+    #[test]
+    fn a_rate_of_frames_lasts_one_second() {
+        let rate = SampleRate::new(44_100).expect("non-zero");
+        assert_eq!(rate.duration_of(44_100), Duration::from_secs(1));
+        assert_eq!(rate.duration_of(66_150), Duration::from_millis(1_500));
+    }
+
     proptest! {
+        #[test]
+        #[cfg_attr(miri, ignore = "proptest reads its regression file, which Miri's isolation forbids")]
+        fn duration_of_is_the_exact_quotient_rounded_down(frames: u64, hz in 1..=u32::MAX) {
+            let rate = SampleRate::new(hz).expect("the strategy excludes zero");
+            let exact = u128::from(frames) * 1_000_000_000 / u128::from(hz);
+            prop_assert_eq!(rate.duration_of(frames).as_nanos(), exact);
+        }
+
         #[test]
         #[cfg_attr(miri, ignore = "proptest reads its regression file, which Miri's isolation forbids")]
         fn sample_rate_round_trips_every_non_zero_rate(hz in 1..=u32::MAX) {

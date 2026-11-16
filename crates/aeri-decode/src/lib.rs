@@ -5,7 +5,6 @@
 
 mod error;
 mod symphonia_decoder;
-mod time;
 
 use std::time::Duration;
 

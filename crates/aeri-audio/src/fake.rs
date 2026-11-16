@@ -16,7 +16,9 @@ use crate::{OutputSink, SinkError};
 /// across writes while paused.
 ///
 /// Inspect what it did through a [`FakeSinkObserver`], which stays with the test after
-/// the sink itself has been moved into the code under test.
+/// the sink itself has been moved into the code under test. The observer also sets how much
+/// the device may play ([`hold`](FakeSinkObserver::hold), [`allow`](FakeSinkObserver::allow),
+/// [`release`](FakeSinkObserver::release)), so a test decides when time passes.
 #[derive(Debug)]
 pub struct FakeSink {
     capacity: NonZeroUsize,
@@ -100,10 +102,37 @@ impl FakeSinkObserver {
         lock(&self.state).played.clone()
     }
 
+    /// The samples played since the last `flush` or `configure`.
+    #[must_use]
+    pub fn played_since_flush(&self) -> Vec<f32> {
+        let state = lock(&self.state);
+        state
+            .played
+            .get(state.played_at_flush..)
+            .unwrap_or_default()
+            .to_vec()
+    }
+
     /// The `configure` and `flush` calls made so far, in order.
     #[must_use]
     pub fn calls(&self) -> Vec<SinkCall> {
         lock(&self.state).calls.clone()
+    }
+
+    /// Stops the device pulling audio, as if it had stalled. Nothing is played until
+    /// [`allow`](Self::allow) or [`release`](Self::release).
+    pub fn hold(&self) {
+        lock(&self.state).budget = Some(0);
+    }
+
+    /// Lets the device play up to `frames` more frames, then hold again.
+    pub fn allow(&self, frames: u64) {
+        lock(&self.state).budget = Some(frames);
+    }
+
+    /// Lets the device play without limit, the default.
+    pub fn release(&self) {
+        lock(&self.state).budget = None;
     }
 }
 
@@ -128,8 +157,11 @@ struct State {
     paused: bool,
     buffered: Vec<f32>,
     played: Vec<f32>,
+    played_at_flush: usize,
     frames_played: u64,
     calls: Vec<SinkCall>,
+    /// Frames the device may still play; `None` is unlimited.
+    budget: Option<u64>,
 }
 
 impl State {
@@ -144,6 +176,7 @@ impl State {
         });
         self.spec = Some(negotiated);
         self.buffered.clear();
+        self.played_at_flush = self.played.len();
         self.frames_played = 0;
     }
 
@@ -165,16 +198,23 @@ impl State {
     fn flush(&mut self) {
         self.calls.push(SinkCall::Flush);
         self.buffered.clear();
+        self.played_at_flush = self.played.len();
         self.frames_played = 0;
     }
 
-    /// Plays everything buffered unless paused.
+    /// Plays everything buffered that the budget allows, unless paused.
     fn play(&mut self) -> &mut Self {
         if !self.paused
             && let Some(channels) = self.channels()
         {
-            self.frames_played += (self.buffered.len() / channels) as u64;
-            self.played.append(&mut self.buffered);
+            let buffered = (self.buffered.len() / channels) as u64;
+            let frames = self.budget.map_or(buffered, |budget| budget.min(buffered));
+            if let Some(budget) = &mut self.budget {
+                *budget -= frames;
+            }
+            let samples = usize::try_from(frames).unwrap_or(usize::MAX) * channels;
+            self.played.extend(self.buffered.drain(..samples));
+            self.frames_played += frames;
         }
         self
     }
@@ -329,6 +369,38 @@ mod tests {
         assert!(sink.is_drained());
         assert_eq!(observer.played(), ramp(4));
         assert_eq!(observer.calls().last(), Some(&SinkCall::Flush));
+    }
+
+    #[test]
+    fn a_held_device_plays_nothing_until_allowed_and_then_only_the_allowance() {
+        let (mut sink, observer) = configured(8);
+        observer.hold();
+        sink.write(&ramp(8)).expect("configured");
+        assert_eq!(sink.frames_played(), 0);
+        assert!(!sink.is_drained());
+
+        observer.allow(3);
+        assert_eq!(sink.frames_played(), 3);
+        assert_eq!(sink.frames_played(), 3);
+        assert_eq!(observer.played(), ramp(6));
+
+        observer.release();
+        assert!(sink.is_drained());
+        assert_eq!(sink.frames_played(), 4);
+    }
+
+    #[test]
+    fn played_since_flush_starts_over_at_each_flush() {
+        let (mut sink, observer) = configured(8);
+        sink.write(&ramp(4)).expect("configured");
+        assert_eq!(sink.frames_played(), 2);
+        sink.flush();
+        assert_eq!(observer.played_since_flush(), []);
+
+        sink.write(&[7.0, 7.0]).expect("configured");
+        assert_eq!(sink.frames_played(), 1);
+        assert_eq!(observer.played_since_flush(), [7.0, 7.0]);
+        assert_eq!(observer.played().len(), 6);
     }
 
     #[test]

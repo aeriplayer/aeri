@@ -14,7 +14,6 @@ use symphonia::core::io::{MediaSource, MediaSourceStream, MediaSourceStreamOptio
 use symphonia::core::meta::MetadataOptions;
 use symphonia::core::units::{Time, TimeBase, Timestamp};
 
-use crate::time::frames_to_duration;
 use crate::{DecodeError, Decoder};
 
 /// A FLAC or MP3 track, demuxed and decoded by symphonia.
@@ -80,7 +79,7 @@ impl SymphoniaDecoder {
         let time_base = track.time_base;
         let duration = track
             .num_frames
-            .map(|frames| frames_to_duration(frames, sample_rate));
+            .map(|frames| sample_rate.duration_of(frames));
 
         Ok(Self {
             reader,
@@ -98,7 +97,11 @@ impl SymphoniaDecoder {
 
     fn timestamp_to_duration(&self, ts: Timestamp) -> Duration {
         self.time_base.map_or_else(
-            || frames_to_duration(u64::try_from(ts.get()).unwrap_or(0), self.spec.sample_rate),
+            || {
+                self.spec
+                    .sample_rate
+                    .duration_of(u64::try_from(ts.get()).unwrap_or(0))
+            },
             |time_base| {
                 time_base
                     .calc_time(ts)
