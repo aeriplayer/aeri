@@ -46,6 +46,7 @@ crates/
                 and FakeSink behind the test-util feature; the only shipped crate with unsafe
   aeri-decode   FLAC and MP3 decoding over symphonia
   aeri-dsp      the DspNode trait, the chain, and the node registry
+  aeri-player   playlists, the queue, playback order: what plays next (no thread yet)
   aeri-engine   the playback actor: decode, then sink; a current track and a next slot
   aeri-cli      the `aeri` binary
 xtask/          cargo xtask: install-hooks, install-tools, check-deps

@@ -6,6 +6,7 @@ members = [
     "crates/aeri-decode",
     "crates/aeri-dsp",
     "crates/aeri-engine",
+    "crates/aeri-player",
     "crates/aeri-cli",
     "xtask",
 ]
@@ -42,6 +43,7 @@ coreaudio-rs = { version = "0.14.2", default-features = false, features = [
     "core_audio",
 ] }
 divan = { package = "codspeed-divan-compat", version = "6.0.0", default-features = false }
+fastrand = { version = "2.5.0", default-features = false }
 fs-err = { version = "3.3.2", default-features = false }
 loom = { version = "0.7.3", default-features = false }
 pipewire = { version = "0.10.1", default-features = false, features = ["v0_3_49"] }

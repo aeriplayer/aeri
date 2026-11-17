@@ -1,0 +1,21 @@
+[package]
+name                   = "aeri-player"
+version.workspace      = true
+edition.workspace      = true
+license.workspace      = true
+repository.workspace   = true
+authors.workspace      = true
+rust-version.workspace = true
+publish.workspace      = true
+description            = "Playlists, the queue, and playback order: what plays next"
+
+[lints]
+workspace = true
+
+[dependencies]
+aeri-core.workspace = true
+fastrand.workspace  = true
+thiserror.workspace = true
+
+[dev-dependencies]
+proptest.workspace = true
