@@ -149,6 +149,20 @@ Specified step by step in [`design/phase-4-playback.md`](design/phase-4-playback
 
 ---
 
+## Curation
+
+> The library as something you look after, never something that is changed behind your back ([ADR 0030](adr/0030-aeri-changes-nothing-it-was-not-told-to.md)).
+
+Unordered, and each needs its own design. Every item that writes to files previews first and has a dry run.
+
+- [ ] Library health report: missing or inconsistent tags, duplicates, unreadable files; read-only
+- [ ] Tag editing, from the v1.0 tag editor, with a preview of every change
+- [ ] Rename, move, and copy by script, with a preview and a dry run
+- [ ] Suggested fixes: aeri proposes, you accept
+- [ ] Default scripts and layouts that ship as editable starting points, never as fixed behaviour
+
+---
+
 ## Later
 
 Unordered, and each needs its own design.
@@ -160,7 +174,6 @@ Unordered, and each needs its own design.
 - Lyrics
 - Scrobbling
 - Internet radio and remote streams
-- File operations: rename, move, copy by script
 - Audio conversion
 - Controlling a running instance from the CLI
 - Third-party extensions (ADR 0002)

@@ -82,3 +82,4 @@ verified. Include the condition under which this should be revisited.
 | [0027](0027-engine-opens-the-slot-when-it-is-set.md) | The engine opens the slot's file when it is set, not when the current track ends |
 | [0028](0028-repository-logic-lives-in-xtask.md) | Logic that checks the repository lives in `xtask`, not in hook entries |
 | [0029](0029-the-engine-opens-tracks-through-an-opener.md) | The engine opens tracks through an opener, so its tests need no audio files |
+| [0030](0030-aeri-changes-nothing-it-was-not-told-to.md) | aeri changes nothing the user did not ask it to change |

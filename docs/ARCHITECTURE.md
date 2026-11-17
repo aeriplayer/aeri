@@ -9,6 +9,8 @@ This document is the authoritative reference for system design, structural const
 
 aeri is a foobar2000-class music player for macOS and Linux, written in Rust ([ADR 0001](adr/0001-desktop-player-scope.md)). Its model is [fooyin](https://github.com/fooyin/fooyin): playlist-centric playback, a library, one script language for display and queries, and an interface assembled from widgets in a layout the user controls.
 
+aeri is a foobar2000-class player first, and the aim goes further: a library the user curates, with defaults that are sensible and every one of them overridable.
+
 The bet is not a new kind of player. It is that this kind of player, designed fresh in Rust for two modern platforms, can be smaller, safer, and easier to change than its predecessors: ownership instead of locks, traits instead of a plugin ABI, and no compatibility burden.
 
 ---
@@ -22,7 +24,8 @@ These are load-bearing constraints. Violating them makes the architecture incohe
 3. **The real-time audio thread is sacred.** No allocations, no locks, no logging, no blocking on the audio thread. The target is zero underruns, not low latency: a music player can buffer generously, and should.
 4. **State has one owner.** Long-lived mutable state belongs to one thread and is reached by messages ([ADR 0004](adr/0004-engine-is-an-actor.md)). Shared data is immutable and reference-counted. `unsafe` exists only in `aeri-audio`, plus the test-only allocation guard ([ADR 0021](adr/0021-shared-allocation-guard-crate.md)).
 5. **Configuration is data.** Playlist columns, groupings, filters, and searches are scripts ([ADR 0010](adr/0010-one-script-language.md)). The interface is a serialised layout tree ([ADR 0011](adr/0011-gpui-and-layout-as-data.md)). A feature that can be a script or a widget is not hard-coded.
-6. **Defensible dependencies.** Every crate addition is justified. Prefer tokio-rs, dtolnay, rust-lang, and established ecosystem authors. No bleeding-edge bets without written rationale.
+6. **aeri changes nothing it was not told to.** Scanning and playing never write to the user's files; every write is an explicit, previewed action ([ADR 0030](adr/0030-aeri-changes-nothing-it-was-not-told-to.md)).
+7. **Defensible dependencies.** Every crate addition is justified. Prefer tokio-rs, dtolnay, rust-lang, and established ecosystem authors. No bleeding-edge bets without written rationale.
 
 ---
 
@@ -324,3 +327,4 @@ Resolve each before the crate that depends on it is written.
 | Slot probing | The engine opens the slot's file when it is set, and reports `Failed` at once | [ADR 0027](adr/0027-engine-opens-the-slot-when-it-is-set.md) |
 | Repository checks | Logic lives in `xtask`; a hook entry is one command | [ADR 0028](adr/0028-repository-logic-lives-in-xtask.md) |
 | Engine tests | The engine opens tracks through an opener; tests use an in-memory decoder | [ADR 0029](adr/0029-the-engine-opens-tracks-through-an-opener.md) |
+| Changing user files | Never unasked; every write is explicit, previewed, and can be a dry run | [ADR 0030](adr/0030-aeri-changes-nothing-it-was-not-told-to.md) |
