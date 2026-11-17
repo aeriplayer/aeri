@@ -161,7 +161,7 @@ Not up for reconsideration without an ADR.
 
 | Decision | Value | Rationale |
 | --- | --- | --- |
-| Internal sample format | `f32` | Sufficient precision; avoids per-node format negotiation. Interleaved at the `Decoder` and `OutputSink` boundaries; layout inside the DSP chain is decided with `aeri-dsp` |
+| Internal sample format | `f32` | Sufficient precision; avoids per-node format negotiation. Interleaved everywhere, the DSP chain included ([ADR 0020](adr/0020-aeri-dsp-in-place-interleaved-chain.md)) |
 | Block size | 1024 frames (internal) | The DSP block size, **not** the device period. The callback buffer size is chosen by the host audio API and must not be forced |
 | Sample rate | Follow source; re-init output on change | On macOS the device is switched to the source rate, never taken exclusively ([ADR 0017](adr/0017-bit-perfect-without-hog-mode.md)); best-effort on Linux, where the negotiated rate is reported, never assumed ([ADR 0003](adr/0003-native-output-backends.md)) |
 | Gapless | Always on, across transitions that keep rate and channel layout | A format change re-inits the output and that gap is accepted (ADR 0003) |
@@ -289,7 +289,6 @@ Resolve each before the crate that depends on it is written.
 - **Layout file format.** Start of the GUI phase.
 - **Settings storage.** One store for application settings, widget settings, and DSP chains: SQLite or a file. Decide when the first setting exists.
 - **Controlling a running instance.** `aeri pause` from a shell needs a way to reach the running player. MPRIS covers Linux. Decide before the CLI grows beyond `play`.
-- **DSP buffer layout.** Interleaved or planar inside the chain. Decide with `aeri-dsp`.
 - **GUI visual language.** Typography, spacing, colour. During the GUI phase.
 - **Third-party notices.** How each release artefact ships dependency licences and points to MPL source. Before the first release (ADR 0014).
 
@@ -316,3 +315,5 @@ Resolve each before the crate that depends on it is written.
 | macOS bit-perfect | Device switched to the source rate; never hog mode | [ADR 0017](adr/0017-bit-perfect-without-hog-mode.md) |
 | Real-time verification | In-house allocation guard; `loom` model of the bridge protocol | [ADR 0018](adr/0018-real-time-verification.md) |
 | Linux output | A PipeWire stream on its own loop thread; the source rate is requested, never forced | [ADR 0019](adr/0019-pipewire-stream-on-its-own-loop.md) |
+| DSP chain | `aeri-dsp`: interleaved `f32`, in place, never changes the stream spec | [ADR 0020](adr/0020-aeri-dsp-in-place-interleaved-chain.md) |
+| Allocation guard | A shared, test-only crate used by `aeri-audio` and `aeri-dsp` | [ADR 0021](adr/0021-shared-allocation-guard-crate.md) |
