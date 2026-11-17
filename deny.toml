@@ -32,6 +32,7 @@ allow-wildcard-paths = true
 # The crate graph from docs/ARCHITECTURE.md.
 deny = [
     { crate = "aeri-engine", wrappers = ["aeri-cli"] },
+    { crate = "aeri-alloc-guard", wrappers = ["aeri-audio", "aeri-dsp"] },
     { crate = "aeri-audio", wrappers = ["aeri-engine"] },
     { crate = "aeri-decode", wrappers = ["aeri-engine"] },
     { crate = "aeri-dsp", wrappers = ["aeri-engine"] },

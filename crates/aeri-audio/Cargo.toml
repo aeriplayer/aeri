@@ -28,5 +28,8 @@ tracing.workspace      = true
 pipewire.workspace = true
 tracing.workspace  = true
 
+[dev-dependencies]
+aeri-alloc-guard.workspace = true
+
 [target.'cfg(loom)'.dev-dependencies]
 loom.workspace = true

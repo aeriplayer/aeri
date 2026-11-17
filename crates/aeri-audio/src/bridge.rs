@@ -227,7 +227,7 @@ impl<R: RingReader> Renderer<R> {
 #[cfg(not(loom))]
 mod tests {
     use super::*;
-    use crate::alloc_guard::assert_no_alloc;
+    use aeri_alloc_guard::assert_no_alloc;
 
     fn stereo(
         capacity_frames: usize,

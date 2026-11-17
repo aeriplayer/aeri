@@ -6,8 +6,6 @@
 //! The `test-util` feature adds [`FakeSink`], an in-memory sink for tests of code that
 //! drives one. It is for dev-dependencies only.
 
-#[cfg(test)]
-mod alloc_guard;
 mod bridge;
 #[cfg(target_os = "macos")]
 mod coreaudio;

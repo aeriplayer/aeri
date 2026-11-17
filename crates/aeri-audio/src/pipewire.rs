@@ -395,8 +395,8 @@ mod tests {
     use aeri_core::{Channels, SampleRate};
 
     use super::*;
-    use crate::alloc_guard::assert_no_alloc;
     use crate::bridge::bridge;
+    use aeri_alloc_guard::assert_no_alloc;
 
     fn spec(channels: u16) -> StreamSpec {
         StreamSpec {

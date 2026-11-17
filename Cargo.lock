@@ -3,9 +3,14 @@
 version = 4
 
 [[package]]
+name = "aeri-alloc-guard"
+version = "0.1.0"
+
+[[package]]
 name = "aeri-audio"
 version = "0.1.0"
 dependencies = [
+ "aeri-alloc-guard",
  "aeri-core",
  "coreaudio-rs",
  "loom",

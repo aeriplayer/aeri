@@ -1,4 +1,6 @@
-//! A test-only allocator that fails a test when guarded code touches the heap (ADR 0018).
+//! A counting allocator that fails a test when guarded code touches the heap (ADR 0021).
+//!
+//! A dev-dependency only: linking this crate installs the allocator for the whole test binary.
 
 use std::alloc::{GlobalAlloc, Layout, System};
 use std::cell::Cell;
@@ -49,7 +51,11 @@ unsafe impl GlobalAlloc for CountingAllocator {
 static ALLOCATOR: CountingAllocator = CountingAllocator;
 
 /// Runs `f`, and panics if it allocated, reallocated, or freed on this thread.
-pub(crate) fn assert_no_alloc<T>(f: impl FnOnce() -> T) -> T {
+///
+/// # Panics
+///
+/// If `f` touched the heap.
+pub fn assert_no_alloc<T>(f: impl FnOnce() -> T) -> T {
     VIOLATIONS.with(|count| count.set(0));
     GUARDED.with(|guarded| guarded.set(true));
     let result = f();
