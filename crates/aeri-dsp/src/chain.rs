@@ -204,6 +204,7 @@ mod tests {
 
     proptest! {
         #[test]
+        #[cfg_attr(miri, ignore = "proptest reads its regression file, which Miri's isolation forbids")]
         fn any_block_reaches_the_nodes_whole_in_order_and_complete(
             width in 1_u16..=8,
             samples in prop::collection::vec(-1.0_f32..1.0, 0..6000),

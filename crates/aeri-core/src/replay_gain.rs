@@ -160,6 +160,10 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(
+        miri,
+        ignore = "Miri perturbs `powf`, so two calls differ in the last bit"
+    )]
     fn a_peak_that_already_fits_changes_nothing() {
         let with = ReplayGain {
             track_gain_db: Some(6.0),
@@ -278,12 +282,14 @@ mod tests {
 
     proptest! {
         #[test]
+        #[cfg_attr(miri, ignore = "proptest reads its regression file, which Miri's isolation forbids")]
         fn the_factor_is_finite_and_positive(rg in any_replay_gain(), mode in any_mode()) {
             let factor = rg.factor(mode);
             prop_assert!(factor.is_finite() && factor > 0.0, "{factor}");
         }
 
         #[test]
+        #[cfg_attr(miri, ignore = "proptest reads its regression file, which Miri's isolation forbids")]
         fn the_peak_never_clips(
             db in -60.0_f32..=60.0,
             peak in prop_oneof![
@@ -302,6 +308,7 @@ mod tests {
         }
 
         #[test]
+        #[cfg_attr(miri, ignore = "proptest reads its regression file, which Miri's isolation forbids")]
         fn a_boost_with_a_peak_never_exceeds_full_scale(db in 0.0_f32..=60.0, peak in 0.001_f32..1.0) {
             let rg = ReplayGain { track_gain_db: Some(db), track_peak: Some(peak), ..ReplayGain::default() };
             prop_assert!(peak * rg.factor(ReplayGainMode::Track) <= 1.0);
