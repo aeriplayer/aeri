@@ -18,16 +18,23 @@ use std::thread::{self, JoinHandle};
 use std::time::Duration;
 
 use aeri_audio::OutputSink;
-use aeri_core::{PlaybackState, ReplayGainMode, Track, Volume};
+use aeri_core::{PlaybackState, ReplayGainMode, Source, Track, Volume};
+use aeri_decode::{DecodeError, Decoder};
 use tokio::sync::{mpsc, oneshot, watch};
 
 #[cfg(feature = "test-util")]
 pub use aeri_audio::{FakeSink, FakeSinkObserver, SinkCall};
 pub use aeri_decode::EXTENSIONS;
+#[cfg(feature = "test-util")]
+pub use aeri_decode::{FakeDecoder, fake_open};
 
 pub use crate::error::EngineError;
 pub use crate::event::EngineEvent;
 use crate::playback::{Command, Playback};
+
+/// How a track is opened: [`aeri_decode::open`] in the engine you get from
+/// [`spawn`](Engine::spawn), anything else through `spawn_with` (ADR 0029).
+pub type Opener = Box<dyn Fn(&Source) -> Result<Box<dyn Decoder>, DecodeError> + Send>;
 
 /// Commands may queue this deep before senders wait.
 const COMMAND_QUEUE: usize = 32;
@@ -77,6 +84,34 @@ impl Engine {
     where
         E: From<EngineEvent> + Send + 'static,
     {
+        Self::start(sink, events, Box::new(aeri_decode::open))
+    }
+
+    /// As [`spawn`](Self::spawn), opening tracks with `open`: for tests that need no audio files.
+    ///
+    /// # Errors
+    ///
+    /// As for [`spawn`](Self::spawn).
+    #[cfg(feature = "test-util")]
+    pub fn spawn_with<E>(
+        sink: Box<dyn OutputSink>,
+        events: mpsc::UnboundedSender<E>,
+        open: Opener,
+    ) -> Result<Self, EngineError>
+    where
+        E: From<EngineEvent> + Send + 'static,
+    {
+        Self::start(sink, events, open)
+    }
+
+    fn start<E>(
+        sink: Box<dyn OutputSink>,
+        events: mpsc::UnboundedSender<E>,
+        open: Opener,
+    ) -> Result<Self, EngineError>
+    where
+        E: From<EngineEvent> + Send + 'static,
+    {
         let (commands, receiver) = mpsc::channel(COMMAND_QUEUE);
         let (publisher, state) = watch::channel(PlaybackState::Stopped);
         let emit = Box::new(move |event: EngineEvent| {
@@ -86,7 +121,7 @@ impl Engine {
         });
         let thread = thread::Builder::new()
             .name("aeri-playback".into())
-            .spawn(move || Playback::new(sink, receiver, publisher, emit).run())
+            .spawn(move || Playback::new(sink, receiver, publisher, emit, open).run())
             .map_err(EngineError::Spawn)?;
         Ok(Self {
             inner: Arc::new(Inner {

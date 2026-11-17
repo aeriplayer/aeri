@@ -24,16 +24,7 @@ mod tests {
     const SEED: u64 = 42;
 
     fn track(file: &str, title: &str) -> Arc<Track> {
-        let path: PathBuf = [
-            env!("CARGO_MANIFEST_DIR"),
-            "..",
-            "aeri-decode",
-            "tests",
-            "fixtures",
-            file,
-        ]
-        .iter()
-        .collect();
+        let path = PathBuf::from(file);
         Arc::new(Track {
             source: Source::File(path),
             duration: None,
@@ -184,7 +175,6 @@ mod tests {
     // ---- 1: gapless across a playlist ----
 
     #[tokio::test]
-    #[cfg_attr(miri, ignore = "decodes files, which Miri's isolation forbids")]
     async fn three_same_spec_tracks_play_gaplessly_in_order_then_stop() {
         let mut rig = rig(vec![good("a"), good("b"), good("c")]).await;
 
@@ -209,7 +199,6 @@ mod tests {
     // ---- 2: the orders ----
 
     #[tokio::test]
-    #[cfg_attr(miri, ignore = "decodes files, which Miri's isolation forbids")]
     async fn repeat_track_plays_the_same_entry_again_and_again() {
         let mut rig = rig(vec![good("a"), good("b")]).await;
         rig.player
@@ -231,7 +220,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[cfg_attr(miri, ignore = "decodes files, which Miri's isolation forbids")]
     async fn repeat_playlist_goes_back_to_the_first_entry_after_the_last() {
         let mut rig = rig(vec![good("a"), good("b")]).await;
         rig.player
@@ -249,7 +237,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[cfg_attr(miri, ignore = "decodes files, which Miri's isolation forbids")]
     async fn shuffle_plays_the_order_a_sequence_with_the_same_seed_gives() {
         let mut model = Sequence::new(SEED);
         let list = model.create_playlist("list".to_owned());
@@ -287,7 +274,6 @@ mod tests {
     // ---- 3: the queue ----
 
     #[tokio::test]
-    #[cfg_attr(miri, ignore = "decodes files, which Miri's isolation forbids")]
     async fn a_queued_entry_plays_second_and_then_the_order_resumes() {
         let mut rig = rig(vec![good("a"), good("b"), good("c"), good("d")]).await;
         rig.player.play().await.expect("the fixture plays");
@@ -318,7 +304,6 @@ mod tests {
     // ---- 4: stop after current ----
 
     #[tokio::test]
-    #[cfg_attr(miri, ignore = "decodes files, which Miri's isolation forbids")]
     async fn stop_after_current_stops_at_the_end_of_the_track_and_the_flag_clears() {
         let mut rig = rig(vec![good("a"), good("b")]).await;
         rig.player.play().await.expect("the fixture plays");
@@ -341,7 +326,6 @@ mod tests {
     // ---- 5: removing the entry in the slot ----
 
     #[tokio::test]
-    #[cfg_attr(miri, ignore = "decodes files, which Miri's isolation forbids")]
     async fn removing_the_entry_in_the_slot_refills_it_with_the_one_after() {
         let mut rig = rig(vec![good("a"), good("b"), good("c")]).await;
         rig.player.play().await.expect("the fixture plays");
@@ -364,7 +348,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[cfg_attr(miri, ignore = "decodes files, which Miri's isolation forbids")]
     async fn queueing_the_entry_that_is_next_anyway_plays_it_from_the_queue_and_then_from_the_order()
      {
         let mut rig = rig(vec![good("a"), good("b")]).await;
@@ -394,7 +377,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[cfg_attr(miri, ignore = "decodes files, which Miri's isolation forbids")]
     async fn default_order_has_no_entry_before_the_first_or_after_the_last() {
         let mut rig = playing(PlaybackOrder::Default).await;
 
@@ -411,7 +393,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[cfg_attr(miri, ignore = "decodes files, which Miri's isolation forbids")]
     async fn repeat_playlist_wraps_in_both_directions() {
         let mut rig = playing(PlaybackOrder::RepeatPlaylist).await;
 
@@ -423,7 +404,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[cfg_attr(miri, ignore = "decodes files, which Miri's isolation forbids")]
     async fn repeat_track_skips_to_neighbours_but_does_not_wrap() {
         let mut rig = playing(PlaybackOrder::RepeatTrack).await;
 
@@ -438,7 +418,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[cfg_attr(miri, ignore = "decodes files, which Miri's isolation forbids")]
     async fn shuffle_goes_back_within_the_pass_and_not_before_its_start() {
         let rig = playing(PlaybackOrder::Shuffle).await;
         let first = rig.state.borrow().current.expect("playing");
@@ -456,7 +435,6 @@ mod tests {
     // ---- 7: skipping what cannot be played ----
 
     #[tokio::test]
-    #[cfg_attr(miri, ignore = "decodes files, which Miri's isolation forbids")]
     async fn a_missing_file_between_two_good_ones_is_skipped() {
         let mut rig = rig(vec![good("a"), missing("gone"), good("c")]).await;
         rig.player.play().await.expect("the first track plays");
@@ -474,7 +452,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[cfg_attr(miri, ignore = "decodes files, which Miri's isolation forbids")]
     async fn a_missing_file_chosen_to_start_is_skipped_for_the_next() {
         let mut rig = rig(vec![missing("gone"), good("b")]).await;
 
@@ -487,7 +464,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[cfg_attr(miri, ignore = "decodes files, which Miri's isolation forbids")]
     async fn a_playlist_of_only_missing_files_under_repeat_playlist_stops() {
         let rig = rig(vec![missing("one"), missing("two")]).await;
         rig.player
@@ -505,7 +481,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[cfg_attr(miri, ignore = "decodes files, which Miri's isolation forbids")]
     async fn failures_in_a_row_stop_a_repeating_playlist_that_loses_its_files_midway() {
         let mut rig = rig(vec![good("a"), missing("one"), missing("two")]).await;
         rig.player
@@ -523,7 +498,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[cfg_attr(miri, ignore = "decodes files, which Miri's isolation forbids")]
     async fn starting_from_stopped_plays_the_queue_first_and_uses_it_up() {
         let mut rig = rig(vec![good("a"), good("b")]).await;
         rig.player
@@ -539,7 +513,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[cfg_attr(miri, ignore = "decodes files, which Miri's isolation forbids")]
     async fn exactly_as_many_failures_in_a_row_as_the_playlist_has_entries_stop_the_skipping() {
         let rig = rig(vec![missing("one"), missing("two")]).await;
         let other = rig
@@ -572,7 +545,6 @@ mod tests {
     // ---- 8: pause and seek ----
 
     #[tokio::test]
-    #[cfg_attr(miri, ignore = "decodes files, which Miri's isolation forbids")]
     async fn toggling_pause_twice_pauses_then_resumes() {
         let mut rig = rig(vec![good("a")]).await;
         rig.player.play().await.expect("the fixture plays");
@@ -593,7 +565,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[cfg_attr(miri, ignore = "decodes files, which Miri's isolation forbids")]
     async fn playing_again_after_the_playlist_finished_starts_it_from_the_top() {
         let mut rig = rig(vec![good("a"), good("b")]).await;
         rig.player.play().await.expect("the fixture plays");
@@ -608,7 +579,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[cfg_attr(miri, ignore = "decodes files, which Miri's isolation forbids")]
     async fn toggling_pause_when_stopped_starts_playing() {
         let mut rig = rig(vec![good("a")]).await;
 
@@ -619,7 +589,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[cfg_attr(miri, ignore = "decodes files, which Miri's isolation forbids")]
     async fn play_while_paused_resumes_and_while_playing_does_nothing() {
         let mut rig = rig(vec![good("a")]).await;
         rig.player.play().await.expect("the fixture plays");
@@ -649,7 +618,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[cfg_attr(miri, ignore = "decodes files, which Miri's isolation forbids")]
     async fn seek_to_forward_and_back_land_near_their_targets() {
         let mut rig = rig(vec![good("a")]).await;
         rig.player.play().await.expect("the fixture plays");
@@ -673,7 +641,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[cfg_attr(miri, ignore = "decodes files, which Miri's isolation forbids")]
     async fn seeking_back_past_the_start_goes_to_the_start() {
         let mut rig = rig(vec![good("a")]).await;
         rig.player.play().await.expect("the fixture plays");
@@ -695,7 +662,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[cfg_attr(miri, ignore = "decodes files, which Miri's isolation forbids")]
     async fn seeking_past_the_end_is_an_error_and_playback_carries_on() {
         let rig = rig(vec![good("a")]).await;
         rig.player.play().await.expect("the fixture plays");
@@ -719,7 +685,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[cfg_attr(miri, ignore = "decodes files, which Miri's isolation forbids")]
     async fn seeking_while_stopped_is_an_error() {
         let rig = rig(vec![good("a")]).await;
 
@@ -731,7 +696,6 @@ mod tests {
     // ---- 9: shutdown ----
 
     #[tokio::test]
-    #[cfg_attr(miri, ignore = "decodes files, which Miri's isolation forbids")]
     async fn dropping_every_handle_joins_both_threads() {
         let rig = rig(vec![good("a")]).await;
         rig.player.play().await.expect("the fixture plays");
@@ -758,7 +722,6 @@ mod tests {
     // ---- everything else the handle does ----
 
     #[tokio::test]
-    #[cfg_attr(miri, ignore = "decodes files, which Miri's isolation forbids")]
     async fn a_command_naming_something_that_is_gone_is_an_error() {
         let rig = rig(vec![good("a")]).await;
         rig.player
@@ -796,7 +759,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[cfg_attr(miri, ignore = "decodes files, which Miri's isolation forbids")]
     async fn playing_with_nothing_to_play_is_an_error() {
         let rig = rig(vec![]).await;
 
@@ -809,7 +771,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[cfg_attr(miri, ignore = "decodes files, which Miri's isolation forbids")]
     async fn play_entry_starts_that_entry_and_the_order_continues_from_it() {
         let mut rig = rig(vec![good("a"), good("b"), good("c")]).await;
 
@@ -826,7 +787,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[cfg_attr(miri, ignore = "decodes files, which Miri's isolation forbids")]
     async fn stopping_clears_what_is_playing_and_keeps_the_playlists_and_the_queue() {
         let rig = rig(vec![good("a"), good("b")]).await;
         rig.player.play().await.expect("the fixture plays");
@@ -846,7 +806,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[cfg_attr(miri, ignore = "decodes files, which Miri's isolation forbids")]
     async fn volume_and_replaygain_reach_the_output_and_the_state() {
         let mut rig = rig(vec![good("a")]).await;
         let half = Volume::from_linear(0.5).expect("in range");
@@ -875,7 +834,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[cfg_attr(miri, ignore = "decodes files, which Miri's isolation forbids")]
     async fn the_state_shows_edits_as_soon_as_their_reply_arrives() {
         let rig = rig(vec![good("a"), good("b")]).await;
 

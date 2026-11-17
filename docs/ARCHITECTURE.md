@@ -323,3 +323,4 @@ Resolve each before the crate that depends on it is written.
 | Underruns | Counted only once audio has played since the last flush | [ADR 0026](adr/0026-underruns-count-only-after-playing.md) |
 | Slot probing | The engine opens the slot's file when it is set, and reports `Failed` at once | [ADR 0027](adr/0027-engine-opens-the-slot-when-it-is-set.md) |
 | Repository checks | Logic lives in `xtask`; a hook entry is one command | [ADR 0028](adr/0028-repository-logic-lives-in-xtask.md) |
+| Engine tests | The engine opens tracks through an opener; tests use an in-memory decoder | [ADR 0029](adr/0029-the-engine-opens-tracks-through-an-opener.md) |

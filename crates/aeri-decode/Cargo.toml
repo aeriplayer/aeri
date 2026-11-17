@@ -12,6 +12,9 @@ description            = "Audio decoding: the Decoder trait over symphonia"
 [lints]
 workspace = true
 
+[features]
+test-util = []
+
 [dependencies]
 aeri-core.workspace = true
 fs-err.workspace    = true
@@ -21,3 +24,7 @@ tracing.workspace   = true
 
 [dev-dependencies]
 proptest.workspace = true
+
+[[test]]
+name              = "fake"
+required-features = ["test-util"]

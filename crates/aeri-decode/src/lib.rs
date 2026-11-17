@@ -2,8 +2,13 @@
 //!
 //! Decoding goes through symphonia (ADR 0007), which stays an implementation detail: no
 //! symphonia type appears in this crate's API. The supported formats are FLAC and MP3.
+//!
+//! The `test-util` feature adds an in-memory [`FakeDecoder`] and [`fake_open`], for tests of code
+//! that plays tracks (ADR 0029). It is for dev-dependencies only.
 
 mod error;
+#[cfg(feature = "test-util")]
+mod fake;
 mod replay_gain;
 mod symphonia_decoder;
 
@@ -12,6 +17,8 @@ use std::time::Duration;
 use aeri_core::{ReplayGain, Source, StreamSpec};
 
 pub use error::DecodeError;
+#[cfg(feature = "test-util")]
+pub use fake::{FakeDecoder, fake_open};
 
 use crate::symphonia_decoder::SymphoniaDecoder;
 
