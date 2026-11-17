@@ -319,3 +319,4 @@ Resolve each before the crate that depends on it is written.
 | Allocation guard | A shared, test-only crate used by `aeri-audio` and `aeri-dsp` | [ADR 0021](adr/0021-shared-allocation-guard-crate.md) |
 | ReplayGain source | The decoder reports it from the tags symphonia parsed | [ADR 0022](adr/0022-decoder-reports-replaygain.md) |
 | Engine events | Four events on a caller-owned unbounded channel; the engine owns the DSP chain | [ADR 0023](adr/0023-engine-events-and-dsp-chain.md) |
+| What plays next | One pure `Sequence` value in `aeri-player`; the actor only calls it | [ADR 0024](adr/0024-aeri-player-sequence-is-pure.md) |
