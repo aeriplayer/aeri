@@ -75,3 +75,4 @@ verified. Include the condition under which this should be revisited.
 | [0020](0020-aeri-dsp-in-place-interleaved-chain.md) | `aeri-dsp` holds an interleaved, in-place chain of compiled-in nodes |
 | [0021](0021-shared-allocation-guard-crate.md) | The allocation guard lives in a shared, test-only crate |
 | [0022](0022-decoder-reports-replaygain.md) | The decoder reports ReplayGain, and lists the extensions it opens |
+| [0023](0023-engine-events-and-dsp-chain.md) | The engine reports events on a caller-owned unbounded channel and runs the DSP chain |
