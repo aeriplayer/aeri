@@ -208,6 +208,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(miri, ignore = "reads the filesystem, which Miri's isolation forbids")]
     fn every_fuzz_target_has_seeds_in_the_repository() {
         let fuzz_dir = workspace_root().unwrap().join("fuzz");
         for (_, seeds) in FUZZ_TARGETS {
