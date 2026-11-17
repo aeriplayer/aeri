@@ -12,10 +12,21 @@ description            = "Playlists, the queue, and playback order: what plays n
 [lints]
 workspace = true
 
+[features]
+test-util = ["aeri-engine/test-util"]
+
 [dependencies]
-aeri-core.workspace = true
-fastrand.workspace  = true
-thiserror.workspace = true
+aeri-core.workspace   = true
+aeri-engine.workspace = true
+fastrand.workspace    = true
+thiserror.workspace   = true
+tokio.workspace       = true
+tracing.workspace     = true
 
 [dev-dependencies]
 proptest.workspace = true
+tokio              = { workspace = true, features = ["macros", "rt", "time"] }
+
+[[test]]
+name              = "player"
+required-features = ["test-util"]

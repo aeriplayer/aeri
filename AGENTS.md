@@ -46,15 +46,15 @@ crates/
                 and FakeSink behind the test-util feature; the only shipped crate with unsafe
   aeri-decode   FLAC and MP3 decoding over symphonia
   aeri-dsp      the DspNode trait, the chain, and the node registry
-  aeri-player   playlists, the queue, playback order: what plays next (no thread yet)
-  aeri-engine   the playback actor: decode, then sink; a current track and a next slot
+  aeri-engine   the playback actor: decode, DSP, then sink; a current track and a next slot
+  aeri-player   the `Player` handle: playlists, the queue, playback order; owns the engine
   aeri-cli      the `aeri` binary
 xtask/          cargo xtask: install-hooks, install-tools, check-deps
 fuzz/           cargo-fuzz targets for the decoder, in their own workspace (ADR 0015)
 docs/assets/    the logo, and the scripts that generate it
 ```
 
-The crate graph is enforced by `deny.toml`: only `aeri-engine` depends on `aeri-audio`, `aeri-decode`, and `aeri-dsp`, and until `aeri-player` exists only `aeri-cli` depends on `aeri-engine` (ADR 0006). Planned crates are created in the phase that first needs them, never scaffolded early; the full graph is in [`ARCHITECTURE.md`](docs/ARCHITECTURE.md#crate-graph).
+The crate graph is enforced by `deny.toml`: only `aeri-engine` depends on `aeri-audio`, `aeri-decode`, and `aeri-dsp`, and only `aeri-player` depends on `aeri-engine`, so frontends such as `aeri-cli` reach playback through `Player` (ADR 0006). Planned crates are created in the phase that first needs them, never scaffolded early; the full graph is in [`ARCHITECTURE.md`](docs/ARCHITECTURE.md#crate-graph).
 
 ## 3. Golden rules
 

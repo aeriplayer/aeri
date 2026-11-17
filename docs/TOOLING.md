@@ -81,7 +81,7 @@ The mechanical half of the "defensible dependencies" pillar in
 
 - **Targets** are only the platforms aeri ships on; a Windows-only advisory is not ours to chase.
 - **Licences** are permissive ones compatible with shipping `MIT OR Apache-2.0` binaries.
-- **Bans** enforce the crate graph: a listed crate may only be depended on directly by its `wrappers`. Only the engine composes the audio and decode layers. Frontends reach the application through `aeri-player` once it exists; until then `aeri-cli` is the engine's one permitted dependant (ADR 0006).
+- **Bans** enforce the crate graph: a listed crate may only be depended on directly by its `wrappers`. Only the engine composes the audio and decode layers. Frontends reach the application through `aeri-player`, the engine's one permitted dependant (ADR 0006).
 - **Build scripts** run arbitrary code at compile time, so only crates named in `[bans.build] allow-build-scripts` may have one. A new entry is a deliberate act in review. `check-deps` fails on entries that no longer match a crate, so the list cannot accumulate stale permissions.
 - **Features are explicit.** Every external dependency a workspace crate declares sets `default-features = false` and names the features it uses (`check-deps`). Defaults are the crate author's guess at a typical user; this way nothing is compiled that our code did not ask for, and a new default in an upstream release does not arrive unannounced.
 - `publish = false` on every crate keeps them off crates.io (aeri ships as binaries) and lets cargo-deny tell the workspace's own path dependencies from wildcard requirements.

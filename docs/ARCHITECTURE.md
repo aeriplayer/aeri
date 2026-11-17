@@ -40,7 +40,7 @@ aeri-engine     audio engine: decode → DSP → sink, current track + next slot
 aeri-library    SQLite, scanning, tags, in-memory store     planned · library
     ↑
 aeri-player     playlists, queue, order; owns engine and
-                library; the `Player` handle                in progress · playback
+                library; the `Player` handle
     ↑
 aeri-platform   MPRIS / macOS Now Playing                   planned · platform
 aeri-gui        binary: GPUI shell, widget registry         planned · GUI
@@ -58,7 +58,6 @@ The split below the engine was drawn before any audio flowed and is provisional:
 - Only `aeri-engine` depends on `aeri-audio`, `aeri-decode`, and `aeri-dsp`.
 - Only `aeri-player` depends on `aeri-engine` and `aeri-library`.
 - Frontends (`aeri-gui`, `aeri-cli`, `aeri-platform`) depend on `aeri-player`, `aeri-script`, and `aeri-core`, and on nothing beneath.
-- **Temporary exception:** until `aeri-player` exists, `aeri-cli` depends on `aeri-engine` directly (ADR 0006).
 - No cyclic dependencies. If you reach for one, the abstraction boundary is wrong.
 
 `deny.toml` enforces these mechanically.

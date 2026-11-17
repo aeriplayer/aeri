@@ -25,5 +25,7 @@ pub enum EngineEvent {
     Failed(Arc<Track>),
     /// Playback stopped on its own: the current track ended with the slot empty, or the
     /// output failed. An explicit `stop` emits nothing.
+    ///
+    /// The state already reads stopped when this arrives.
     Ended,
 }
