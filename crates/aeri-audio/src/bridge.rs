@@ -205,6 +205,9 @@ impl<R: RingReader> Renderer<R> {
         let available = available.saturating_sub(skipped);
         self.read_pos = self.read_pos.saturating_add(skipped as u64);
 
+        // Audio has played since the last flush (ADR 0026), so an empty ring now is a stall.
+        let playing = self.read_pos > flush_at;
+
         let wanted = out.len() - out.len() % self.channels;
         let take = available.min(wanted) / self.channels * self.channels;
         // Clamped to `out.len()`, so the split cannot panic.
@@ -217,7 +220,7 @@ impl<R: RingReader> Renderer<R> {
 
         self.read_pos = self.read_pos.saturating_add(popped as u64);
         self.shared.read_pos.store(self.read_pos, Ordering::Relaxed);
-        if popped < out.len() {
+        if popped < out.len() && playing {
             self.shared.underruns.fetch_add(1, Ordering::Relaxed);
         }
     }
@@ -254,7 +257,7 @@ mod tests {
     }
 
     #[test]
-    fn an_underrun_plays_what_there_is_then_silence_and_is_counted() {
+    fn a_short_ring_plays_what_there_is_then_silence() {
         let (mut writer, mut renderer) = stereo(8);
         writer.write(&ramp(1, 4));
         let mut out = [9.0; 8];
@@ -263,8 +266,97 @@ mod tests {
 
         assert_eq!(out, [1.0, 2.0, 3.0, 4.0, 0.0, 0.0, 0.0, 0.0]);
         assert_eq!(writer.frames_played(), 2);
+    }
+
+    #[test]
+    fn running_dry_once_audio_has_played_is_counted() {
+        let (mut writer, mut renderer) = stereo(8);
+        writer.write(&ramp(1, 4));
+        let mut out = [9.0; 4];
+        assert_no_alloc(|| renderer.render(&mut out));
+        assert_eq!(writer.take_underruns(), None);
+
+        assert_no_alloc(|| renderer.render(&mut out));
+
+        assert_eq!(out, [0.0; 4]);
         assert_eq!(writer.take_underruns(), NonZeroU64::new(1));
         assert_eq!(writer.take_underruns(), None);
+    }
+
+    #[test]
+    fn a_buffer_filled_exactly_while_playing_is_not_an_underrun() {
+        let (mut writer, mut renderer) = stereo(8);
+        writer.write(&ramp(1, 8));
+        let mut out = [9.0; 4];
+
+        assert_no_alloc(|| renderer.render(&mut out));
+        assert_no_alloc(|| renderer.render(&mut out));
+
+        assert_eq!(out.to_vec(), ramp(5, 4));
+        assert_eq!(writer.take_underruns(), None);
+    }
+
+    #[test]
+    fn the_device_ring_holds_two_hundred_milliseconds() {
+        use aeri_core::{Channels, SampleRate, StreamSpec};
+
+        let spec = StreamSpec {
+            sample_rate: SampleRate::new(48_000).expect("non-zero"),
+            channels: Channels::new(2).expect("non-zero"),
+        };
+        let (mut writer, _renderer) = device_bridge(spec);
+
+        let accepted = writer.write(&vec![0.0; 2 * 20_000]);
+
+        assert_eq!(accepted, 9_600);
+    }
+
+    #[test]
+    fn an_empty_ring_before_anything_has_played_is_not_an_underrun() {
+        let (mut writer, mut renderer) = stereo(8);
+        let mut out = [9.0; 4];
+
+        assert_no_alloc(|| renderer.render(&mut out));
+        assert_no_alloc(|| renderer.render(&mut out));
+
+        assert_eq!(writer.take_underruns(), None);
+    }
+
+    #[test]
+    fn an_empty_ring_right_after_a_flush_is_not_an_underrun_but_a_later_stall_is() {
+        let (mut writer, mut renderer) = stereo(8);
+        writer.write(&ramp(1, 4));
+        let mut out = [9.0; 4];
+        assert_no_alloc(|| renderer.render(&mut out));
+        writer.write(&ramp(10, 4));
+        writer.flush();
+
+        assert_no_alloc(|| renderer.render(&mut out));
+        assert_eq!(out, [0.0; 4]);
+        assert_eq!(writer.take_underruns(), None);
+
+        writer.write(&ramp(100, 4));
+        assert_no_alloc(|| renderer.render(&mut out));
+        assert_eq!(out.to_vec(), ramp(100, 4));
+        assert_no_alloc(|| renderer.render(&mut out));
+        assert_eq!(writer.take_underruns(), NonZeroU64::new(1));
+    }
+
+    #[test]
+    fn a_partly_filled_first_buffer_after_a_flush_is_not_an_underrun_but_the_next_empty_one_is() {
+        let (mut writer, mut renderer) = stereo(8);
+        writer.write(&ramp(1, 4));
+        let mut out = [9.0; 4];
+        assert_no_alloc(|| renderer.render(&mut out));
+        writer.flush();
+        writer.write(&ramp(100, 2));
+
+        assert_no_alloc(|| renderer.render(&mut out));
+        assert_eq!(out, [100.0, 101.0, 0.0, 0.0]);
+        assert_eq!(writer.take_underruns(), None);
+
+        assert_no_alloc(|| renderer.render(&mut out));
+        assert_eq!(writer.take_underruns(), NonZeroU64::new(1));
     }
 
     #[test]
