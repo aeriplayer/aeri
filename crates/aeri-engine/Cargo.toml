@@ -26,8 +26,13 @@ tracing.workspace     = true
 
 [dev-dependencies]
 aeri-audio = { workspace = true, features = ["test-util"] }
+proptest   = { workspace = true }
 tokio      = { workspace = true, features = ["macros", "rt", "time"] }
 
 [[test]]
 name              = "engine"
+required-features = ["test-util"]
+
+[[test]]
+name              = "boundaries"
 required-features = ["test-util"]

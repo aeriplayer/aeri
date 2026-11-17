@@ -28,6 +28,7 @@ pub struct FakeDecoder {
     spec: StreamSpec,
     frames: u64,
     replay_gain: ReplayGain,
+    fails_after: Option<u64>,
     position: u64,
     block: Vec<f32>,
 }
@@ -40,9 +41,18 @@ impl FakeDecoder {
             spec,
             frames,
             replay_gain,
+            fails_after: None,
             position: 0,
             block: Vec::new(),
         }
+    }
+
+    /// Makes decoding fail with [`DecodeError::Corrupt`] once `frames` frames have been produced,
+    /// as a file that opens but is damaged part-way does.
+    #[must_use]
+    pub const fn failing_after(mut self, frames: u64) -> Self {
+        self.fails_after = Some(frames);
+        self
     }
 }
 
@@ -66,7 +76,13 @@ impl Decoder for FakeDecoder {
     }
 
     fn next_block(&mut self) -> Result<Option<&[f32]>, DecodeError> {
-        let count = BLOCK_FRAMES.min(self.frames - self.position);
+        let end = self
+            .fails_after
+            .map_or(self.frames, |at| at.min(self.frames));
+        if self.position >= end && self.fails_after.is_some_and(|at| at < self.frames) {
+            return Err(DecodeError::Corrupt("a packet failed to decode"));
+        }
+        let count = BLOCK_FRAMES.min(end - self.position);
         if count == 0 {
             return Ok(None);
         }
@@ -247,6 +263,33 @@ mod tests {
             decoder.seek(Duration::from_millis(1_001)),
             Err(DecodeError::Seek(_))
         ));
+    }
+
+    #[test]
+    fn a_decoder_told_to_fail_produces_what_comes_before_the_fault_then_errors() {
+        let spec = cd_quality(44_100);
+        let mut decoder =
+            FakeDecoder::new(spec, 10_000, ReplayGain::default()).failing_after(6_000);
+
+        let mut frames = 0;
+        let error = loop {
+            match decoder.next_block() {
+                Ok(Some(block)) => frames += block.len() as u64 / 2,
+                Ok(None) => panic!("the stream ended without the fault"),
+                Err(error) => break error,
+            }
+        };
+
+        assert_eq!(frames, 6_000);
+        assert!(matches!(error, DecodeError::Corrupt(_)));
+        assert!(decoder.next_block().is_err(), "it keeps failing");
+    }
+
+    #[test]
+    fn a_fault_at_or_past_the_end_is_no_fault() {
+        let spec = cd_quality(44_100);
+        let mut decoder = FakeDecoder::new(spec, 5_000, ReplayGain::default()).failing_after(5_000);
+        assert_eq!(drain(&mut decoder).0, 5_000);
     }
 
     #[test]
