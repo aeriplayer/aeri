@@ -10,7 +10,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use aeri_core::{PlaybackState, Source, Track};
-use aeri_engine::Engine;
+use aeri_engine::{Engine, EngineEvent};
 use anyhow::{Context as _, Result};
 use clap::{Parser, Subcommand};
 use tracing::Level;
@@ -45,7 +45,9 @@ async fn main() -> Result<()> {
 async fn play(path: PathBuf) -> Result<()> {
     // Report a bad path before opening the audio device.
     fs_err::metadata(&path).with_context(|| format!("cannot play {}", path.display()))?;
-    let engine = Engine::with_default_output().context("cannot start playback")?;
+    // Held, not read: the player takes over the events when this command moves onto it.
+    let (events, _events) = tokio::sync::mpsc::unbounded_channel::<EngineEvent>();
+    let engine = Engine::with_default_output(events).context("cannot start playback")?;
     let mut state = engine.subscribe();
     let track = Arc::new(Track {
         source: Source::File(path.clone()),

@@ -3,9 +3,14 @@
 //! One named thread owns all playback state (ADR 0004). [`Engine`] is a cheap handle to it:
 //! commands go in on a channel and are answered one by one; state comes out on a watch
 //! channel. The engine knows two tracks, the one playing and an optional next, and nothing
-//! about playlists (ADR 0005).
+//! about playlists (ADR 0005). What happens to the owner's tracks is reported as
+//! [`EngineEvent`]s on a channel the owner provides (ADR 0023).
+//!
+//! The `test-util` feature re-exports the fake output sink, for tests of code that drives
+//! the real engine. It is for dev-dependencies only.
 
 mod error;
+mod event;
 mod playback;
 
 use std::sync::Arc;
@@ -13,10 +18,15 @@ use std::thread::{self, JoinHandle};
 use std::time::Duration;
 
 use aeri_audio::OutputSink;
-use aeri_core::{PlaybackState, Track};
+use aeri_core::{PlaybackState, ReplayGainMode, Track, Volume};
 use tokio::sync::{mpsc, oneshot, watch};
 
+#[cfg(feature = "test-util")]
+pub use aeri_audio::{FakeSink, FakeSinkObserver, SinkCall};
+pub use aeri_decode::EXTENSIONS;
+
 pub use crate::error::EngineError;
+pub use crate::event::EngineEvent;
 use crate::playback::{Command, Playback};
 
 /// Commands may queue this deep before senders wait.
@@ -53,15 +63,30 @@ impl Drop for Inner {
 impl Engine {
     /// Starts the playback thread, which takes ownership of `sink`.
     ///
+    /// Events go to `events`, converted with `E::from`, so an owner can pass the sender of
+    /// its own inbox. The channel is unbounded, so the playback thread never waits on a
+    /// slow receiver. A dropped receiver is ignored.
+    ///
     /// # Errors
     ///
     /// [`EngineError::Spawn`] if the operating system refuses a new thread.
-    pub fn spawn(sink: Box<dyn OutputSink>) -> Result<Self, EngineError> {
+    pub fn spawn<E>(
+        sink: Box<dyn OutputSink>,
+        events: mpsc::UnboundedSender<E>,
+    ) -> Result<Self, EngineError>
+    where
+        E: From<EngineEvent> + Send + 'static,
+    {
         let (commands, receiver) = mpsc::channel(COMMAND_QUEUE);
         let (publisher, state) = watch::channel(PlaybackState::Stopped);
+        let emit = Box::new(move |event: EngineEvent| {
+            if events.send(E::from(event)).is_err() {
+                tracing::debug!("nothing is listening for engine events");
+            }
+        });
         let thread = thread::Builder::new()
             .name("aeri-playback".into())
-            .spawn(move || Playback::new(sink, receiver, publisher).run())
+            .spawn(move || Playback::new(sink, receiver, publisher, emit).run())
             .map_err(EngineError::Spawn)?;
         Ok(Self {
             inner: Arc::new(Inner {
@@ -78,17 +103,21 @@ impl Engine {
     ///
     /// [`EngineError::Spawn`] as for [`spawn`](Self::spawn). On platforms without a device
     /// sink, [`EngineError::Output`].
-    pub fn with_default_output() -> Result<Self, EngineError> {
+    pub fn with_default_output<E>(events: mpsc::UnboundedSender<E>) -> Result<Self, EngineError>
+    where
+        E: From<EngineEvent> + Send + 'static,
+    {
         #[cfg(target_os = "macos")]
         {
-            Self::spawn(Box::new(aeri_audio::CoreAudioSink::new()))
+            Self::spawn(Box::new(aeri_audio::CoreAudioSink::new()), events)
         }
         #[cfg(target_os = "linux")]
         {
-            Self::spawn(Box::new(aeri_audio::PipeWireSink::new()))
+            Self::spawn(Box::new(aeri_audio::PipeWireSink::new()), events)
         }
         #[cfg(not(any(target_os = "macos", target_os = "linux")))]
         {
+            drop(events);
             Err(EngineError::Output(aeri_audio::SinkError::NoDevice))
         }
     }
@@ -148,6 +177,28 @@ impl Engine {
     /// cannot seek there, in which case it carries on from wherever the decoder is.
     pub async fn seek(&self, to: Duration) -> Result<(), EngineError> {
         self.request(|reply| Command::Seek { to, reply }).await
+    }
+
+    /// Sets the output volume. The change ramps in over the next block and is heard after
+    /// the audio already buffered, about a quarter of a second (ADR 0016).
+    ///
+    /// # Errors
+    ///
+    /// [`EngineError::Stopped`] if the playback thread has exited.
+    pub async fn set_volume(&self, volume: Volume) -> Result<(), EngineError> {
+        self.request(|reply| Command::SetVolume { volume, reply })
+            .await
+    }
+
+    /// Chooses which `ReplayGain` value is applied, from the next track on and at once for
+    /// the current one.
+    ///
+    /// # Errors
+    ///
+    /// [`EngineError::Stopped`] if the playback thread has exited.
+    pub async fn set_replay_gain(&self, mode: ReplayGainMode) -> Result<(), EngineError> {
+        self.request(|reply| Command::SetReplayGain { mode, reply })
+            .await
     }
 
     /// Latest-value subscription. A new subscriber sees the current state at once.

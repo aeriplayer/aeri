@@ -1,17 +1,19 @@
 //! The playback thread: the one owner of playback state (ADR 0004).
 
+use std::collections::VecDeque;
 use std::mem;
 use std::sync::Arc;
 use std::thread;
 use std::time::{Duration, Instant};
 
 use aeri_audio::OutputSink;
-use aeri_core::{PlaybackState, SampleRate, StreamSpec, Track, Transport};
+use aeri_core::{PlaybackState, ReplayGainMode, SampleRate, StreamSpec, Track, Transport, Volume};
 use aeri_decode::Decoder;
+use aeri_dsp::{Chain, Control, DEFAULT_CHAIN, Registry, TrackStart};
 use tokio::sync::mpsc::error::TryRecvError;
 use tokio::sync::{mpsc, oneshot, watch};
 
-use crate::EngineError;
+use crate::{EngineError, EngineEvent};
 
 /// Position is published at most this often; transitions are published at once.
 const PUBLISH_EVERY: Duration = Duration::from_millis(100);
@@ -19,6 +21,8 @@ const PUBLISH_EVERY: Duration = Duration::from_millis(100);
 const BACKOFF: Duration = Duration::from_millis(5);
 
 type Reply = oneshot::Sender<Result<(), EngineError>>;
+/// Hands an event to the owner. Boxed so the engine need not know the owner's message type.
+pub(crate) type Emit = Box<dyn FnMut(EngineEvent) + Send>;
 
 /// A request to the playback thread, with the channel its answer goes back on.
 #[derive(Debug)]
@@ -38,12 +42,22 @@ pub(crate) enum Command {
         to: Duration,
         reply: Reply,
     },
+    SetVolume {
+        volume: Volume,
+        reply: Reply,
+    },
+    SetReplayGain {
+        mode: ReplayGainMode,
+        reply: Reply,
+    },
 }
 
 pub(crate) struct Playback {
     sink: Box<dyn OutputSink>,
     commands: mpsc::Receiver<Command>,
     state: watch::Sender<PlaybackState>,
+    events: Emit,
+    chain: Chain,
     /// The stream spec the sink is open for, and the spec it negotiated.
     opened: Option<(StreamSpec, StreamSpec)>,
     next: Option<Arc<Track>>,
@@ -59,6 +73,10 @@ struct Active {
     start: Segment,
     /// The previous track, after a gapless change, until the sink reaches `start`.
     previous: Option<(Arc<Track>, Segment)>,
+    /// Tracks taken from the slot, with the sink frame they start at, whose `NowPlaying` is due.
+    announce: VecDeque<(u64, Arc<Track>)>,
+    /// A track already announced by `TookNext` that a seek pulled back from a pending reopen.
+    deferred: Option<(Arc<Track>, Box<dyn Decoder>)>,
     /// The decoded block being written, and how much of it the sink has taken.
     block: Vec<f32>,
     offset: usize,
@@ -86,8 +104,18 @@ struct Segment {
 }
 
 impl Active {
-    fn new(track: Arc<Track>, decoder: Box<dyn Decoder>, position: Duration) -> Self {
+    fn new(
+        track: Arc<Track>,
+        decoder: Box<dyn Decoder>,
+        position: Duration,
+        announce: bool,
+    ) -> Self {
         let rate = decoder.spec().sample_rate;
+        let announce = if announce {
+            VecDeque::from([(0, Arc::clone(&track))])
+        } else {
+            VecDeque::new()
+        };
         Self {
             track,
             decoder,
@@ -97,6 +125,8 @@ impl Active {
                 rate,
             },
             previous: None,
+            announce,
+            deferred: None,
             block: Vec::new(),
             offset: 0,
             written: 0,
@@ -111,11 +141,17 @@ impl Playback {
         sink: Box<dyn OutputSink>,
         commands: mpsc::Receiver<Command>,
         state: watch::Sender<PlaybackState>,
+        events: Emit,
     ) -> Self {
+        let chain = Registry::builtin()
+            .build(DEFAULT_CHAIN)
+            .expect("the default chain names only built-in nodes");
         Self {
             sink,
             commands,
             state,
+            events,
+            chain,
             opened: None,
             next: None,
             active: None,
@@ -146,9 +182,15 @@ impl Playback {
                 self.refresh();
             }
         }
-        self.sink.flush();
+        self.flush();
         self.active = None;
         self.refresh();
+    }
+
+    /// Discards what the output holds and what the chain remembers.
+    fn flush(&mut self) {
+        self.sink.flush();
+        self.chain.reset();
     }
 
     fn handle(&mut self, command: Command) {
@@ -168,12 +210,20 @@ impl Playback {
             }
             Command::Stop(reply) => {
                 if self.active.take().is_some() {
-                    self.sink.flush();
+                    self.flush();
                     self.sink.set_paused(false);
                 }
                 (reply, Ok(()))
             }
             Command::Seek { to, reply } => (reply, self.seek(to)),
+            Command::SetVolume { volume, reply } => {
+                self.chain.control(&Control::Volume(volume));
+                (reply, Ok(()))
+            }
+            Command::SetReplayGain { mode, reply } => {
+                self.chain.control(&Control::ReplayGain(mode));
+                (reply, Ok(()))
+            }
         };
         self.refresh();
         if reply.send(result).is_err() {
@@ -184,11 +234,16 @@ impl Playback {
     fn play(&mut self, track: Arc<Track>) -> Result<(), EngineError> {
         let decoder = aeri_decode::open(&track.source)?;
         self.next = None;
-        self.start(track, decoder)
+        self.start(track, decoder, false)
     }
 
     /// Makes `track` current, reusing the open output when the spec allows.
-    fn start(&mut self, track: Arc<Track>, decoder: Box<dyn Decoder>) -> Result<(), EngineError> {
+    fn start(
+        &mut self,
+        track: Arc<Track>,
+        decoder: Box<dyn Decoder>,
+        announce: bool,
+    ) -> Result<(), EngineError> {
         let spec = decoder.spec();
         if self.opened.is_some_and(|(open, _)| open == spec) {
             self.sink.flush();
@@ -205,8 +260,11 @@ impl Playback {
             }
             self.opened = Some((spec, negotiated));
         }
+        self.chain.reset();
+        self.chain
+            .start_track(&TrackStart::new(spec, decoder.replay_gain()));
         self.sink.set_paused(false);
-        self.active = Some(Active::new(track, decoder, Duration::ZERO));
+        self.active = Some(Active::new(track, decoder, Duration::ZERO, announce));
         Ok(())
     }
 
@@ -223,6 +281,7 @@ impl Playback {
         let active = self.active.as_mut().ok_or(EngineError::NotPlaying)?;
         let landed = active.decoder.seek(to)?;
         self.sink.flush();
+        self.chain.reset();
         let rate = active.decoder.spec().sample_rate;
         active.start = Segment {
             frame: 0,
@@ -233,8 +292,11 @@ impl Playback {
         active.block.clear();
         active.offset = 0;
         active.written = 0;
-        if let End::Reopen(next, _) = mem::replace(&mut active.end, End::NotYet) {
-            self.next = Some(next);
+        for (frame, _) in &mut active.announce {
+            *frame = 0;
+        }
+        if let End::Reopen(next, decoder) = mem::replace(&mut active.end, End::NotYet) {
+            active.deferred = Some((next, decoder));
         }
         Ok(())
     }
@@ -254,10 +316,13 @@ impl Playback {
                     active.block.clear();
                     active.block.extend_from_slice(block);
                     active.offset = 0;
+                    self.chain
+                        .process(&mut active.block, active.decoder.spec().channels);
                 }
                 Ok(None) => return self.end_of_track(),
                 Err(error) => {
                     tracing::error!(%error, "decoding failed; skipping the rest of the track");
+                    (self.events)(EngineEvent::Failed(Arc::clone(&active.track)));
                     return self.end_of_track();
                 }
             }
@@ -275,6 +340,7 @@ impl Playback {
                 tracing::error!(%error, "the audio output failed; stopping");
                 self.active = None;
                 self.opened = None;
+                (self.events)(EngineEvent::Ended);
             }
         }
     }
@@ -284,28 +350,45 @@ impl Playback {
         let Some(active) = &mut self.active else {
             return;
         };
-        let Some(next) = self.next.take() else {
+        let taken = match active.deferred.take() {
+            Some(taken) => Some(taken),
+            None => match self.next.take() {
+                None => None,
+                Some(track) => match aeri_decode::open(&track.source) {
+                    Ok(decoder) => {
+                        (self.events)(EngineEvent::TookNext(Arc::clone(&track)));
+                        Some((track, decoder))
+                    }
+                    Err(error) => {
+                        tracing::error!(%error, "the next track cannot be opened; stopping after this one");
+                        (self.events)(EngineEvent::Failed(track));
+                        None
+                    }
+                },
+            },
+        };
+        let Some((next, decoder)) = taken else {
             active.end = End::Stop;
             return;
         };
-        match aeri_decode::open(&next.source) {
-            Ok(decoder) if decoder.spec() == active.decoder.spec() => {
-                let start = Segment {
-                    frame: active.written,
-                    position: Duration::ZERO,
-                    rate: decoder.spec().sample_rate,
-                };
-                let finished = mem::replace(&mut active.track, next);
-                active.previous = Some((finished, mem::replace(&mut active.start, start)));
-                active.decoder = decoder;
-                active.block.clear();
-                active.offset = 0;
-            }
-            Ok(decoder) => active.end = End::Reopen(next, decoder),
-            Err(error) => {
-                tracing::error!(%error, "the next track cannot be opened; stopping after this one");
-                active.end = End::Stop;
-            }
+        if decoder.spec() == active.decoder.spec() {
+            self.chain
+                .start_track(&TrackStart::new(decoder.spec(), decoder.replay_gain()));
+            let start = Segment {
+                frame: active.written,
+                position: Duration::ZERO,
+                rate: decoder.spec().sample_rate,
+            };
+            active
+                .announce
+                .push_back((active.written, Arc::clone(&next)));
+            let finished = mem::replace(&mut active.track, next);
+            active.previous = Some((finished, mem::replace(&mut active.start, start)));
+            active.decoder = decoder;
+            active.block.clear();
+            active.offset = 0;
+        } else {
+            active.end = End::Reopen(next, decoder);
         }
     }
 
@@ -315,13 +398,34 @@ impl Playback {
             thread::sleep(BACKOFF);
             return;
         }
+        self.announce(None);
         let Some(active) = self.active.take() else {
             return;
         };
-        if let End::Reopen(track, decoder) = active.end
-            && let Err(error) = self.start(track, decoder)
+        match active.end {
+            End::Reopen(track, decoder) => {
+                let reopened = Arc::clone(&track);
+                if let Err(error) = self.start(track, decoder, true) {
+                    tracing::error!(%error, "the output cannot be reopened for the next track; stopping");
+                    (self.events)(EngineEvent::Failed(reopened));
+                    (self.events)(EngineEvent::Ended);
+                }
+            }
+            End::Stop | End::NotYet => (self.events)(EngineEvent::Ended),
+        }
+    }
+
+    /// Emits `NowPlaying` for each taken track whose first frame the output has reached
+    /// (`played`), or for all of them when `played` is `None`.
+    fn announce(&mut self, played: Option<u64>) {
+        let Some(active) = &mut self.active else {
+            return;
+        };
+        while let Some((frame, _)) = active.announce.front()
+            && played.is_none_or(|played| *frame <= played)
+            && let Some((_, track)) = active.announce.pop_front()
         {
-            tracing::error!(%error, "the output cannot be reopened for the next track; stopping");
+            (self.events)(EngineEvent::NowPlaying(track));
         }
     }
 
@@ -334,6 +438,7 @@ impl Playback {
         {
             active.previous = None;
         }
+        self.announce(Some(played));
         let snapshot = self.snapshot(played);
         let due = position_due(self.last_published.elapsed());
         let published = self.state.send_if_modified(|current| {

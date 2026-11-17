@@ -12,10 +12,14 @@ description            = "Playback engine: an actor that decodes a current track
 [lints]
 workspace = true
 
+[features]
+test-util = ["aeri-audio/test-util"]
+
 [dependencies]
 aeri-audio.workspace  = true
 aeri-core.workspace   = true
 aeri-decode.workspace = true
+aeri-dsp.workspace    = true
 thiserror.workspace   = true
 tokio.workspace       = true
 tracing.workspace     = true
