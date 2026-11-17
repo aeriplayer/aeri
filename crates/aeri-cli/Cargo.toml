@@ -21,10 +21,15 @@ aeri-core.workspace          = true
 aeri-player.workspace        = true
 anyhow.workspace             = true
 clap.workspace               = true
+crossterm.workspace          = true
 fs-err.workspace             = true
 tokio                        = { workspace = true, features = ["macros", "rt", "signal"] }
 tracing.workspace            = true
 tracing-subscriber.workspace = true
+
+[dev-dependencies]
+aeri-player = { workspace = true, features = ["test-util"] }
+tokio       = { workspace = true, features = ["time"] }
 
 [package.metadata.dist]
 dist = true

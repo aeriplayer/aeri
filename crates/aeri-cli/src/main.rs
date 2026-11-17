@@ -1,10 +1,12 @@
 //! The `aeri` command-line player. It depends on `aeri-player` and `aeri-core` only (ADR 0006).
 
 mod args;
+mod controls;
+mod keys;
 mod output;
 mod paths;
 
-use std::io;
+use std::io::{self, IsTerminal as _};
 use std::path::PathBuf;
 use std::sync::Arc;
 
@@ -12,9 +14,13 @@ use aeri_core::{PlaybackState, Source, Track, Volume};
 use aeri_player::Player;
 use anyhow::{Context as _, Result};
 use clap::Parser as _;
+use crossterm::event::KeyEvent;
+use tokio::sync::mpsc;
 use tracing::Level;
 
 use crate::args::{Cli, Command, Gain, Order};
+use crate::keys::{Action, Keys};
+use crate::output::{Status, Style};
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> Result<()> {
@@ -89,22 +95,38 @@ async fn play(
         .await?;
     player.play().await.context("nothing could be played")?;
 
+    // Keys only when a person is typing: with input piped in there is no keyboard to read.
+    let (keys, mut pressed) = if io::stdin().is_terminal() {
+        let (keys, pressed) = Keys::start().context("cannot read the keyboard")?;
+        (Some(keys), Some(pressed))
+    } else {
+        (None, None)
+    };
+    let style = if keys.is_some() {
+        Style::RAW_TERMINAL
+    } else {
+        Style::PLAIN
+    };
+
     let mut shown: Option<Arc<Track>> = None;
     let mut stdout = io::stdout();
     loop {
         let current = playback.borrow_and_update().clone();
-        let playing = roster.borrow_and_update().current.is_some();
+        let (playing, status) = {
+            let state = roster.borrow_and_update();
+            (state.current.is_some(), Status::of(&state))
+        };
         if is_over(&current, playing) {
             break;
         }
         if let Some(track) = newly_started(shown.as_ref(), &current) {
             if shown.is_some() {
-                output::finish(&mut stdout)?;
+                output::finish(&mut stdout, style)?;
             }
-            output::now_playing(&mut stdout, track)?;
+            output::now_playing(&mut stdout, style, track)?;
             shown = Some(Arc::clone(track));
         }
-        output::progress(&mut stdout, &current)?;
+        output::progress(&mut stdout, style, &current, &status)?;
 
         tokio::select! {
             changed = playback.changed() => {
@@ -117,6 +139,25 @@ async fn play(
                     break;
                 }
             }
+            key = next_key(&mut pressed) => {
+                let Some(key) = key else {
+                    pressed = None;
+                    continue;
+                };
+                match keys::action(key) {
+                    Some(Action::Quit) => {
+                        player.stop().await.context("cannot stop playback")?;
+                        break;
+                    }
+                    Some(action) => {
+                        let state = roster.borrow().clone();
+                        if let Err(error) = controls::apply(action, &player, &state).await {
+                            tracing::debug!(%error, ?action, "a key did not take effect");
+                        }
+                    }
+                    None => {}
+                }
+            }
             interrupted = tokio::signal::ctrl_c() => {
                 interrupted.context("cannot listen for Ctrl-C")?;
                 player.stop().await.context("cannot stop playback")?;
@@ -124,8 +165,17 @@ async fn play(
             }
         }
     }
-    output::finish(&mut stdout)?;
+    output::finish(&mut stdout, style)?;
+    drop(keys);
     Ok(())
+}
+
+/// The next key from the keyboard, or never when there is none to read.
+async fn next_key(pressed: &mut Option<mpsc::UnboundedReceiver<KeyEvent>>) -> Option<KeyEvent> {
+    match pressed {
+        Some(pressed) => pressed.recv().await,
+        None => std::future::pending().await,
+    }
 }
 
 #[cfg(test)]
@@ -169,5 +219,29 @@ mod tests {
         assert!(Arc::ptr_eq(next, &second));
         assert!(newly_started(Some(&first), &PlaybackState::Stopped).is_none());
         assert!(newly_started(None, &PlaybackState::Stopped).is_none());
+    }
+
+    #[tokio::test]
+    #[cfg_attr(
+        miri,
+        ignore = "the tokio runtime needs the operating system's event queue"
+    )]
+    async fn the_next_key_is_the_next_one_sent_and_nothing_when_there_is_no_keyboard() {
+        let (send, receive) = mpsc::unbounded_channel();
+        send.send(KeyEvent::new(
+            crossterm::event::KeyCode::Char('n'),
+            crossterm::event::KeyModifiers::NONE,
+        ))
+        .expect("the receiver is open");
+        let mut pressed = Some(receive);
+
+        let key = next_key(&mut pressed).await.expect("a key was sent");
+        assert_eq!(key.code, crossterm::event::KeyCode::Char('n'));
+        drop(send);
+        assert!(next_key(&mut pressed).await.is_none());
+
+        let mut none = None;
+        let waited = tokio::time::timeout(Duration::from_millis(30), next_key(&mut none)).await;
+        assert!(waited.is_err(), "with no keyboard it should wait forever");
     }
 }
