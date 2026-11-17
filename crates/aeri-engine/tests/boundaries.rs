@@ -271,7 +271,7 @@ mod tests {
         };
         let (engine, observer, mut received) = engine(vec![failing, Plan::stereo(3_000)]);
 
-        let heard = runtime().block_on(play_all(&engine, &mut received, 2));
+        let heard = runtime().block_on(play_pair(&engine, &observer, &mut received));
 
         assert_eq!(heard.failed, [0], "the failing track is reported once");
         assert_eq!(heard.took, [1]);
@@ -334,7 +334,7 @@ mod tests {
             },
         ]);
 
-        let heard = runtime().block_on(play_all(&engine, &mut received, 2));
+        let heard = runtime().block_on(play_pair(&engine, &observer, &mut received));
 
         assert_eq!(observer.played().len() as u64, 5_000 * 2 + 7_000);
         assert_eq!(
