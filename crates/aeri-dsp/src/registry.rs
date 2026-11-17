@@ -5,6 +5,7 @@ use std::collections::BTreeMap;
 use crate::chain::Chain;
 use crate::error::DspError;
 use crate::node::DspNode;
+use crate::nodes::{REPLAYGAIN, ReplayGainNode, VOLUME, VolumeNode};
 
 /// Builds a fresh node.
 pub type NodeConstructor = fn() -> Box<dyn DspNode>;
@@ -20,6 +21,15 @@ impl Registry {
     #[must_use]
     pub fn new() -> Self {
         Self::default()
+    }
+
+    /// A registry of this crate's nodes: [`REPLAYGAIN`] and [`VOLUME`].
+    #[must_use]
+    pub fn builtin() -> Self {
+        let mut constructors = BTreeMap::new();
+        constructors.insert(REPLAYGAIN, ReplayGainNode::boxed as NodeConstructor);
+        constructors.insert(VOLUME, VolumeNode::boxed as NodeConstructor);
+        Self { constructors }
     }
 
     /// Registers `constructor` under `id`.

@@ -6,7 +6,9 @@
 
 mod chain;
 mod error;
+mod gain;
 mod node;
+mod nodes;
 #[cfg(test)]
 mod recorder;
 mod registry;
@@ -14,4 +16,5 @@ mod registry;
 pub use chain::{BLOCK_FRAMES, Chain};
 pub use error::DspError;
 pub use node::{Control, DspNode, TrackStart};
+pub use nodes::{DEFAULT_CHAIN, REPLAYGAIN, VOLUME};
 pub use registry::{NodeConstructor, Registry};
