@@ -41,8 +41,9 @@ Run `git status` and `git log -5`, then read:
 ```text
 crates/
   aeri-core     playback types; depends on no other workspace crate
+  aeri-alloc-guard  test-only allocation guard for real-time code (ADR 0021); has unsafe
   aeri-audio    the OutputSink trait, CoreAudioSink, PipeWireSink, the real-time bridge,
-                and FakeSink behind the test-util feature; the only crate with unsafe
+                and FakeSink behind the test-util feature; the only shipped crate with unsafe
   aeri-decode   FLAC and MP3 decoding over symphonia
   aeri-dsp      the DspNode trait, the chain, and the node registry
   aeri-engine   the playback actor: decode, then sink; a current track and a next slot

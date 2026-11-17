@@ -20,7 +20,7 @@ These are load-bearing constraints. Violating them makes the architecture incohe
 1. **Modern platforms only.** Apple Silicon macOS and Linux with PipeWire. No compatibility shims. Windows is never considered.
 2. **Composable.** Every extension point is a trait with a registry ([ADR 0002](adr/0002-compiled-in-extension-points.md)). Every frontend reaches the application through one `Player` handle ([ADR 0006](adr/0006-frontends-use-the-player-handle.md)). Each crate is usable and testable without the ones above it.
 3. **The real-time audio thread is sacred.** No allocations, no locks, no logging, no blocking on the audio thread. The target is zero underruns, not low latency: a music player can buffer generously, and should.
-4. **State has one owner.** Long-lived mutable state belongs to one thread and is reached by messages ([ADR 0004](adr/0004-engine-is-an-actor.md)). Shared data is immutable and reference-counted. `unsafe` exists only in `aeri-audio`.
+4. **State has one owner.** Long-lived mutable state belongs to one thread and is reached by messages ([ADR 0004](adr/0004-engine-is-an-actor.md)). Shared data is immutable and reference-counted. `unsafe` exists only in `aeri-audio`, plus the test-only allocation guard ([ADR 0021](adr/0021-shared-allocation-guard-crate.md)).
 5. **Configuration is data.** Playlist columns, groupings, filters, and searches are scripts ([ADR 0010](adr/0010-one-script-language.md)). The interface is a serialised layout tree ([ADR 0011](adr/0011-gpui-and-layout-as-data.md)). A feature that can be a script or a widget is not hard-coded.
 6. **Defensible dependencies.** Every crate addition is justified. Prefer tokio-rs, dtolnay, rust-lang, and established ecosystem authors. No bleeding-edge bets without written rationale.
 
@@ -47,7 +47,7 @@ aeri-gui        binary: GPUI shell, widget registry         planned · GUI
 aeri-cli        binary: `aeri`
 ```
 
-**A crate is created in the phase that first needs it.** A stub crate still costs compile time, lockfile entries, and dependency upkeep, and its boundary hardens before any code has tested it. Six crates exist: `aeri-core`, `aeri-audio`, `aeri-decode`, `aeri-dsp`, `aeri-engine`, `aeri-cli`.
+**A crate is created in the phase that first needs it.** A stub crate still costs compile time, lockfile entries, and dependency upkeep, and its boundary hardens before any code has tested it. Seven crates exist: `aeri-core`, `aeri-audio`, `aeri-decode`, `aeri-dsp`, `aeri-engine`, `aeri-cli`, and the test-only `aeri-alloc-guard` ([ADR 0021](adr/0021-shared-allocation-guard-crate.md)), which sits outside the graph.
 
 The split below the engine was drawn before any audio flowed and is provisional: expect the first-audio phase to reshape it, and do not contort code to preserve it.
 

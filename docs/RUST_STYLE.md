@@ -71,7 +71,7 @@ The one place where ordinary good Rust is not enough. Inside the callback: no al
 
 ## 7. `unsafe`
 
-- Only in `aeri-audio`. Anywhere else, the design is wrong.
+- Only in `aeri-audio`, and in the test-only `aeri-alloc-guard` ([ADR 0021](adr/0021-shared-allocation-guard-crate.md)). Anywhere else, the design is wrong.
 - Each `unsafe` block holds one operation and carries a `// SAFETY:` comment stating the invariant that makes it sound and who upholds it (lint-enforced).
 - Wrap each FFI interaction in a small safe type whose constructor establishes the invariant and whose `Drop` releases the resource. The rest of the crate uses the safe type; `unsafe` does not leak into signatures.
 
