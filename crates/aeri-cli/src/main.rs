@@ -3,6 +3,7 @@
 mod args;
 mod controls;
 mod keys;
+mod log;
 mod output;
 mod paths;
 
@@ -25,7 +26,7 @@ use crate::output::{Status, Style};
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> Result<()> {
     tracing_subscriber::fmt()
-        .with_writer(io::stderr)
+        .with_writer(log::LogWriter)
         .with_max_level(Level::WARN)
         .init();
     match Cli::parse().command {
@@ -107,6 +108,13 @@ async fn play(
     } else {
         Style::PLAIN
     };
+    log::set_screen(if keys.is_some() {
+        log::Screen::RawTerminal
+    } else if io::stdout().is_terminal() {
+        log::Screen::ProgressLine
+    } else {
+        log::Screen::Quiet
+    });
 
     let mut shown: Option<Arc<Track>> = None;
     let mut stdout = io::stdout();
