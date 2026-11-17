@@ -10,3 +10,5 @@ dist-manifest.json
 !.claude/skills/aeri-review/
 .vscode/
 CLAUDE.local.md
+/mutants.out/
+/mutants.out.old/
