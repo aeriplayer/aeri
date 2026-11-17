@@ -1,6 +1,8 @@
 test_tool             = "nextest"
 additional_cargo_args = ["--all-features", "--locked"]
 
+additional_cargo_test_args = ["--profile", "mutants"] # .config/nextest.toml
+
 # Build automation, not product code; and the macOS device sink, which CI's Linux runner
 # cannot compile and which is verified by hand (brief, Step 4).
 exclude_globs = ["xtask/**", "**/build.rs", "crates/aeri-audio/src/coreaudio.rs"]
