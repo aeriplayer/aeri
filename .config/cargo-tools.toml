@@ -1,5 +1,6 @@
 # Cargo subcommands the hooks and CI call: crate = exact version.
 # `cargo xtask install-tools` installs from this file; Renovate updates it (docs/TOOLING.md).
+cargo-codspeed = "6.0.0"
 cargo-dist     = "0.32.0"
 cargo-fuzz     = "0.13.2"
 cargo-hack     = "0.6.46"

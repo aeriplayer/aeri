@@ -51,7 +51,7 @@ Install the tools once with `cargo xtask install-tools`.
 | The real-time callback body | Unit tests under an allocation guard | An allocation on the audio thread is a glitch, not a test failure, unless a test makes it one |
 | The engine | Integration tests against `FakeSink` | Deterministic; no device, no timing |
 | Device sinks | Manual listening, plus the above for their callback | CI runners have no audio hardware |
-| Hot paths (decode throughput, DSP nodes, library scan) | Benchmarks, from Phase 4 | A regression needs a number to be noticed |
+| Hot paths (decode throughput, DSP nodes, library scan) | Benchmarks (`cargo bench -p aeri-dsp`; CI runs them under CodSpeed) | A regression needs a number to be noticed |
 
 ## Standards
 
@@ -69,6 +69,6 @@ Recorded here so the gap is visible rather than assumed away.
 
 - **`loom`** models aeri's bridge protocol against a stand-in ring, not `rtrb` itself, which uses `std` atomics `loom` cannot see ([ADR 0018](adr/0018-real-time-verification.md)).
 - **Fuzzing** covers the decoder only (`fuzz/`, [ADR 0015](adr/0015-fuzzing-with-cargo-fuzz.md)). Each parser added later gets its own target. The corpus is not kept between runs.
-- **Benchmarks** arrive with the DSP chain in Phase 4, built with the `profiling` profile. CI runs them under CodSpeed's instruction-counting mode, which gives stable numbers on shared runners where wall-clock timings are noise.
+- **Benchmarks** cover the DSP nodes only. Decode throughput and the library scan get theirs when those phases land ([`TOOLING.md`](TOOLING.md#what-ci-runs-and-for-how-long)).
 - **Device sinks on Linux** cannot be exercised in CI and need a real machine.
 - **Coverage on macOS-only code** is not measured: the coverage job runs on Linux.
