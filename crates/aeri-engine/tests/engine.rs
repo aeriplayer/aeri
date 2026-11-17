@@ -119,6 +119,10 @@ mod tests {
             .collect()
     }
 
+    fn frames(observer: &FakeSinkObserver) -> u64 {
+        observer.played().len() as u64 / 2
+    }
+
     fn flushes(observer: &FakeSinkObserver) -> usize {
         observer
             .calls()
@@ -461,7 +465,29 @@ mod tests {
 
     #[tokio::test]
     #[cfg_attr(miri, ignore = "decodes files, which Miri's isolation forbids")]
-    async fn a_next_track_that_cannot_be_opened_fails_and_playback_ends_after_the_current_one() {
+    async fn a_next_track_that_cannot_be_opened_fails_at_once_and_the_current_one_plays_on() {
+        let (sink, observer) = held_sink();
+        let (engine, _state, mut events) = engine(sink);
+        engine
+            .play(track("sine.flac", "first"))
+            .await
+            .expect("the fixture plays");
+
+        engine
+            .set_next(Some(track("missing.flac", "gone")))
+            .await
+            .expect("set_next is answered");
+
+        assert_eq!(label(&next_event(&mut events).await), "failed gone");
+        assert_eq!(observer.played().len(), 0, "nothing had played yet");
+        observer.release();
+        assert_eq!(events_until_ended(&mut events).await, ["ended"]);
+        assert_eq!(frames(&observer), FRAMES as u64);
+    }
+
+    #[tokio::test]
+    #[cfg_attr(miri, ignore = "decodes files, which Miri's isolation forbids")]
+    async fn a_good_track_offered_after_a_failed_one_follows_gaplessly() {
         let (sink, observer) = held_sink();
         let (engine, _state, mut events) = engine(sink);
         engine
@@ -472,14 +498,47 @@ mod tests {
             .set_next(Some(track("missing.flac", "gone")))
             .await
             .expect("set_next is answered");
+        assert_eq!(label(&next_event(&mut events).await), "failed gone");
 
+        engine
+            .set_next(Some(track("sine.flac", "second")))
+            .await
+            .expect("set_next is answered");
+        observer.release();
+
+        assert_eq!(
+            events_until_ended(&mut events).await,
+            ["took second", "now second", "ended"]
+        );
+        assert_eq!(flushes(&observer), 0);
+        assert_eq!(frames(&observer), 2 * FRAMES as u64);
+    }
+
+    #[tokio::test]
+    #[cfg_attr(miri, ignore = "decodes files, which Miri's isolation forbids")]
+    async fn a_failed_offer_leaves_the_slot_empty_even_if_a_good_one_was_there() {
+        let (sink, observer) = held_sink();
+        let (engine, _state, mut events) = engine(sink);
+        engine
+            .play(track("sine.flac", "first"))
+            .await
+            .expect("the fixture plays");
+        engine
+            .set_next(Some(track("sine.flac", "second")))
+            .await
+            .expect("set_next is answered");
+
+        engine
+            .set_next(Some(track("missing.flac", "gone")))
+            .await
+            .expect("set_next is answered");
         observer.release();
 
         assert_eq!(
             events_until_ended(&mut events).await,
             ["failed gone", "ended"]
         );
-        assert_eq!(observer.played().len() / 2, FRAMES);
+        assert_eq!(frames(&observer), FRAMES as u64);
     }
 
     #[tokio::test]

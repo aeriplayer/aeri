@@ -466,6 +466,11 @@ mod tests {
 
         assert_eq!(frames(&rig.observer), 2 * FRAMES);
         assert_eq!(configures(&rig.observer), 1);
+        assert_eq!(
+            flushes(&rig.observer),
+            0,
+            "the skip left a gap: the output was restarted"
+        );
     }
 
     #[tokio::test]
