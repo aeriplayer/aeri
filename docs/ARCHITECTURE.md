@@ -40,14 +40,14 @@ aeri-engine     audio engine: decode → DSP → sink, current track + next slot
 aeri-library    SQLite, scanning, tags, in-memory store     planned · library
     ↑
 aeri-player     playlists, queue, order; owns engine and
-                library; the `Player` handle                planned · playback
+                library; the `Player` handle                in progress · playback
     ↑
 aeri-platform   MPRIS / macOS Now Playing                   planned · platform
 aeri-gui        binary: GPUI shell, widget registry         planned · GUI
 aeri-cli        binary: `aeri`
 ```
 
-**A crate is created in the phase that first needs it.** A stub crate still costs compile time, lockfile entries, and dependency upkeep, and its boundary hardens before any code has tested it. Seven crates exist: `aeri-core`, `aeri-audio`, `aeri-decode`, `aeri-dsp`, `aeri-engine`, `aeri-cli`, and the test-only `aeri-alloc-guard` ([ADR 0021](adr/0021-shared-allocation-guard-crate.md)), which sits outside the graph.
+**A crate is created in the phase that first needs it.** A stub crate still costs compile time, lockfile entries, and dependency upkeep, and its boundary hardens before any code has tested it. Eight crates exist: `aeri-core`, `aeri-audio`, `aeri-decode`, `aeri-dsp`, `aeri-engine`, `aeri-player`, `aeri-cli`, and the test-only `aeri-alloc-guard` ([ADR 0021](adr/0021-shared-allocation-guard-crate.md)), which sits outside the graph.
 
 The split below the engine was drawn before any audio flowed and is provisional: expect the first-audio phase to reshape it, and do not contort code to preserve it.
 
