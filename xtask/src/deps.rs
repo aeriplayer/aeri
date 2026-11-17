@@ -15,6 +15,8 @@ use anyhow::{Context as _, Result, bail};
 use cargo_metadata::{CargoOpt, Metadata, MetadataCommand};
 use serde::Deserialize;
 
+use crate::workspace_root;
+
 /// The parts of `deny.toml` this check reads; cargo-deny owns the rest.
 #[derive(Debug, Deserialize)]
 struct DenyConfig {
@@ -52,9 +54,7 @@ struct Declared {
 
 /// Runs both checks and reports every violation at once.
 pub(crate) fn check() -> Result<()> {
-    let root = Path::new(env!("CARGO_MANIFEST_DIR"))
-        .parent()
-        .context("xtask has no parent directory")?;
+    let root = workspace_root()?;
     let deny_path = root.join("deny.toml");
     let deny: DenyConfig = toml::from_str(&fs_err::read_to_string(&deny_path)?)
         .with_context(|| format!("could not parse {}", deny_path.display()))?;

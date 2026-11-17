@@ -1,8 +1,11 @@
 //! Repository automation, run as `cargo xtask <task>`.
 
+mod checks;
+mod cooldown;
 mod deps;
 
 use std::collections::BTreeMap;
+use std::path::Path;
 use std::process::Command;
 
 use anyhow::{Context as _, Result, bail, ensure};
@@ -14,6 +17,11 @@ tasks:
                  (all of them, or only the names given: `install-tools cargo-nextest`)
   check-deps     dependency policy cargo-deny cannot express: explicit features,
                  no stale build-script permissions
+  crate-cooldown no locked crate version younger than .config/crate-cooldown.toml allows
+  coverage       tests once, then the coverage floors (cargo llvm-cov)
+  mutants        mutation-test the lines changed since $MUTANTS_BASE (default origin/main)
+  loom           the loom model of the real-time bridge
+  fuzz           every fuzz target for $FUZZ_SECONDS (default 60)
   release        not implemented yet; use `dist build`";
 
 /// The cargo subcommands the hooks and CI invoke, as `crate = "version"`.
@@ -29,6 +37,11 @@ fn main() -> Result<()> {
         Some("install-hooks") => install_hooks(),
         Some("install-tools") => install_tools(&args.collect::<Vec<_>>()),
         Some("check-deps") => deps::check(),
+        Some("crate-cooldown") => cooldown::check(),
+        Some("coverage") => checks::coverage(),
+        Some("mutants") => checks::mutants(),
+        Some("loom") => checks::loom(),
+        Some("fuzz") => checks::fuzz(),
         Some("release") => bail!("`release` is not implemented yet; run `dist build`"),
         Some(other) => bail!("unknown task `{other}`\n\n{USAGE}"),
         None => bail!("no task given\n\n{USAGE}"),
@@ -112,8 +125,25 @@ fn select_tools<'a>(
         .collect())
 }
 
+/// The repository root, found from where `xtask` was built.
+pub(crate) fn workspace_root() -> Result<&'static Path> {
+    Path::new(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .context("xtask has no parent directory")
+}
+
+/// `cargo` as a developer's shell would find it.
+///
+/// Not `$CARGO`, which is the toolchain that built `xtask`: a task that runs from a directory
+/// with its own `rust-toolchain.toml` (the fuzz crate's nightly) must let rustup choose.
+pub(crate) fn cargo() -> Command {
+    let mut command = Command::new("cargo");
+    command.env_remove("RUSTUP_TOOLCHAIN");
+    command
+}
+
 /// Runs `command` to completion, turning a non-zero exit into an error.
-fn run(command: &mut Command) -> Result<()> {
+pub(crate) fn run(command: &mut Command) -> Result<()> {
     let program = command.get_program().to_string_lossy().into_owned();
     let status = command
         .status()

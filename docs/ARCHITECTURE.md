@@ -322,3 +322,4 @@ Resolve each before the crate that depends on it is written.
 | Player actor | One inbox for commands and engine events; slot offers matched by identity | [ADR 0025](adr/0025-player-actor-and-offers.md) |
 | Underruns | Counted only once audio has played since the last flush | [ADR 0026](adr/0026-underruns-count-only-after-playing.md) |
 | Slot probing | The engine opens the slot's file when it is set, and reports `Failed` at once | [ADR 0027](adr/0027-engine-opens-the-slot-when-it-is-set.md) |
+| Repository checks | Logic lives in `xtask`; a hook entry is one command | [ADR 0028](adr/0028-repository-logic-lives-in-xtask.md) |

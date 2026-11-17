@@ -49,7 +49,8 @@ crates/
   aeri-engine   the playback actor: decode, DSP, then sink; a current track and a next slot
   aeri-player   the `Player` handle: playlists, the queue, playback order; owns the engine
   aeri-cli      the `aeri` binary
-xtask/          cargo xtask: install-hooks, install-tools, check-deps
+xtask/          cargo xtask: install-hooks, install-tools, check-deps, crate-cooldown,
+                coverage, mutants, loom, fuzz (the logic behind those hooks, ADR 0028)
 fuzz/           cargo-fuzz targets for the decoder, in their own workspace (ADR 0015)
 docs/assets/    the logo, and the scripts that generate it
 ```

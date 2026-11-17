@@ -80,3 +80,4 @@ verified. Include the condition under which this should be revisited.
 | [0025](0025-player-actor-and-offers.md) | The player is an actor with one inbox; slot offers are told apart by identity |
 | [0026](0026-underruns-count-only-after-playing.md) | The callback counts an underrun only once audio has played since the last flush |
 | [0027](0027-engine-opens-the-slot-when-it-is-set.md) | The engine opens the slot's file when it is set, not when the current track ends |
+| [0028](0028-repository-logic-lives-in-xtask.md) | Logic that checks the repository lives in `xtask`, not in hook entries |

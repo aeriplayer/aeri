@@ -1594,6 +1594,7 @@ dependencies = [
  "cargo_metadata",
  "fs-err",
  "serde",
+ "serde_json",
  "toml",
 ]
 
