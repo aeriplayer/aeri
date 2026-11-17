@@ -4,7 +4,8 @@
 //! plays after what (ADR 0024), and the playback engine, whose slot it keeps filled
 //! (ADR 0025). Frontends depend on this crate and on nothing beneath it (ADR 0006).
 //!
-//! The `test-util` feature adds [`Player::with_fake_sink`]. It is for dev-dependencies only.
+//! The `test-util` feature adds [`Player::with_fake_sink`] and re-exports the fake sink it takes,
+//! so frontends can test against a real player. It is for dev-dependencies only.
 
 mod actor;
 mod block_on;
@@ -19,6 +20,8 @@ mod shuffle;
 mod state;
 
 pub use aeri_engine::EXTENSIONS;
+#[cfg(feature = "test-util")]
+pub use aeri_engine::{FakeSink, FakeSinkObserver};
 pub use error::{PlayerError, SequenceError};
 pub use ids::{EntryId, PlaylistId, Position};
 pub use m3u::parse_m3u;

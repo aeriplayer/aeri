@@ -31,7 +31,21 @@ aeri play song.flac
 aeri play --order shuffle ~/Music/album-a ~/Music/mix.m3u song.flac
 ```
 
-plays every FLAC and MP3 file it is given, one after another and gaplessly where the files share a sample rate, through the default output, and shows the file name and position until the last one ends or you press Ctrl-C. A path can be a file, a directory (searched, subdirectories included, in path order), or an `.m3u` or `.m3u8` playlist. A file that cannot be played is reported on standard error and skipped.
+plays every FLAC and MP3 file it is given, one after another and gaplessly where the files share a sample rate, through the default output, and shows the file name, position, order and volume until the last one ends or you quit. A path can be a file, a directory (searched, subdirectories included, in path order), or an `.m3u` or `.m3u8` playlist. A file that cannot be played is reported on standard error and skipped.
+
+In a terminal these keys work while it plays:
+
+| Key | Does |
+| --- | --- |
+| Space | pause or resume |
+| `n`, `p` | next, previous |
+| Left, Right | seek back or forward 5 seconds |
+| Down, Up | volume down or up 2 dB |
+| `o` | cycle the order |
+| `s` | stop after the current track, or cancel that |
+| `q`, Ctrl-C | quit |
+
+With input piped in, there are no keys and `aeri` plays through and exits.
 
 | Flag | Values |
 | --- | --- |
@@ -44,7 +58,7 @@ plays every FLAC and MP3 file it is given, one after another and gaplessly where
 
 ## Status
 
-Phase 3, first audio, is complete: decoding, the playback engine, and native output on both platforms. Phase 4 is in progress: playlists, a queue, playback order, volume and ReplayGain work through the player, and the command line takes paths, directories and M3U playlists. Interactive keys, and listening checks on both platforms, remain. See the [roadmap](docs/ROADMAP.md).
+Phase 3, first audio, is complete: decoding, the playback engine, and native output on both platforms. Phase 4 is in progress: playlists, a queue, playback order, volume and ReplayGain work through the player, and the command line takes paths, directories and M3U playlists. Listening checks on both platforms remain. See the [roadmap](docs/ROADMAP.md).
 
 ## Building from source
 

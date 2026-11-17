@@ -13,6 +13,9 @@ exclude_re = [
     "replace != with == in Playback::start",
     # Only connects to a PipeWire server, which CI lacks; verified by hand (ADR 0019).
     'replace run -> Result<\(\), pw::Error> with Ok\(\(\)\)$',
+    # Calls into the terminal, which a test has none of; verified by hand (Step 10 of the Phase 4 brief).
+    "RawMode>::drop",
+    'replace from_terminal -> .* with Ok\(None\)$',
     # Only logs the graph rate; `resamples` holds the decision and is tested.
     'replace report_rate with \(\)$',
 ]
