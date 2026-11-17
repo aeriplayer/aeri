@@ -73,6 +73,7 @@ dependencies = [
  "aeri-core",
  "aeri-decode",
  "aeri-dsp",
+ "proptest",
  "thiserror",
  "tokio",
  "tracing",
