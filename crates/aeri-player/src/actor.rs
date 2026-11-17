@@ -46,6 +46,19 @@ pub(crate) struct Actor {
     failures: usize,
 }
 
+/// An error and its causes, innermost last: what a log line should say, since the file name
+/// and the reason are in the sources, not in the top-level message.
+fn chain(error: &(dyn std::error::Error + 'static)) -> String {
+    let mut text = error.to_string();
+    let mut source = error.source();
+    while let Some(cause) = source {
+        text.push_str(": ");
+        text.push_str(&cause.to_string());
+        source = cause.source();
+    }
+    text
+}
+
 fn fresh(track: &Track) -> Arc<Track> {
     Arc::new(track.clone())
 }
@@ -329,7 +342,11 @@ impl Actor {
                 }
                 Err(error @ EngineError::Decode(_)) => {
                     self.failures += 1;
-                    tracing::warn!(%error, "skipping a track that cannot be played");
+                    tracing::warn!(
+                        file = %track.source,
+                        reason = %chain(&error),
+                        "skipping a track that cannot be played"
+                    );
                     let next = self.sequence.peek_skip_next();
                     match next {
                         Some(next) if self.failures < self.failure_limit() => position = next,

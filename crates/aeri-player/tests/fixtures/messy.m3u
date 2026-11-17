@@ -1,0 +1,8 @@
+# a messy playlist
+
+indented.flac
+
+http://example.com/stream.mp3
+file:///not/played.flac
+#EXTINF:1,x
+with space/and #hash.flac

@@ -67,7 +67,7 @@ jobs:
           else
             echo "release=false" >> "$GITHUB_OUTPUT"
           fi
-          if changed fuzz/ crates/aeri-decode/ crates/aeri-core/ Cargo.toml Cargo.lock; then
+          if changed fuzz/ crates/aeri-decode/ crates/aeri-core/ crates/aeri-player/ Cargo.toml Cargo.lock; then
             echo "fuzz=true" >> "$GITHUB_OUTPUT"
           else
             echo "fuzz=false" >> "$GITHUB_OUTPUT"
@@ -275,7 +275,7 @@ jobs:
         working-directory: fuzz
         run: rustup toolchain install # reads fuzz/rust-toolchain.toml
 
-      - name: Fuzz the decoder for 60 seconds
+      - name: Fuzz the decoder and the playlist parser for 60 seconds each
         env:
           FUZZ_SECONDS: "60"
         run: prek run fuzz --all-files --stage manual

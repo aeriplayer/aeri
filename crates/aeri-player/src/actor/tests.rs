@@ -380,3 +380,28 @@ fn starting_a_track_that_is_gone_is_an_error() {
         "{result:?}"
     );
 }
+
+#[derive(Debug, thiserror::Error)]
+#[error("the disk is full")]
+struct Inner;
+
+#[derive(Debug, thiserror::Error)]
+#[error("cannot write")]
+struct Middle(#[source] Inner);
+
+#[derive(Debug, thiserror::Error)]
+#[error("cannot save the file")]
+struct Outer(#[source] Middle);
+
+#[test]
+fn a_logged_error_names_every_cause_outermost_first() {
+    assert_eq!(
+        chain(&Outer(Middle(Inner))),
+        "cannot save the file: cannot write: the disk is full"
+    );
+}
+
+#[test]
+fn an_error_without_a_cause_is_just_its_message() {
+    assert_eq!(chain(&Inner), "the disk is full");
+}

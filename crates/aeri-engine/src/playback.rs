@@ -20,6 +20,19 @@ const PUBLISH_EVERY: Duration = Duration::from_millis(100);
 /// How long to wait before offering audio again to a full or draining output.
 const BACKOFF: Duration = Duration::from_millis(5);
 
+/// An error and its causes, innermost last: what a log line should say, since the file name
+/// and the reason are in the sources, not in the top-level message.
+fn chain(error: &(dyn std::error::Error + 'static)) -> String {
+    let mut text = error.to_string();
+    let mut source = error.source();
+    while let Some(cause) = source {
+        text.push_str(": ");
+        text.push_str(&cause.to_string());
+        source = cause.source();
+    }
+    text
+}
+
 type Reply = oneshot::Sender<Result<(), EngineError>>;
 /// Hands an event to the owner. Boxed so the engine need not know the owner's message type.
 pub(crate) type Emit = Box<dyn FnMut(EngineEvent) + Send>;
@@ -321,7 +334,11 @@ impl Playback {
                 }
                 Ok(None) => return self.end_of_track(),
                 Err(error) => {
-                    tracing::error!(%error, "decoding failed; skipping the rest of the track");
+                    tracing::error!(
+                        file = %active.track.source,
+                        reason = %chain(&error),
+                        "decoding failed; skipping the rest of the track"
+                    );
                     (self.events)(EngineEvent::Failed(Arc::clone(&active.track)));
                     return self.end_of_track();
                 }
@@ -360,7 +377,11 @@ impl Playback {
                         Some((track, decoder))
                     }
                     Err(error) => {
-                        tracing::error!(%error, "the next track cannot be opened; stopping after this one");
+                        tracing::error!(
+                            file = %track.source,
+                            reason = %chain(&error),
+                            "the next track cannot be opened; stopping after this one"
+                        );
                         (self.events)(EngineEvent::Failed(track));
                         None
                     }
@@ -526,6 +547,31 @@ mod tests {
     use aeri_core::{Channels, Source};
 
     use super::*;
+
+    #[derive(Debug, thiserror::Error)]
+    #[error("the disk is full")]
+    struct Inner;
+
+    #[derive(Debug, thiserror::Error)]
+    #[error("cannot write")]
+    struct Middle(#[source] Inner);
+
+    #[derive(Debug, thiserror::Error)]
+    #[error("cannot save the file")]
+    struct Outer(#[source] Middle);
+
+    #[test]
+    fn a_logged_error_names_every_cause_outermost_first() {
+        assert_eq!(
+            chain(&Outer(Middle(Inner))),
+            "cannot save the file: cannot write: the disk is full"
+        );
+    }
+
+    #[test]
+    fn an_error_without_a_cause_is_just_its_message() {
+        assert_eq!(chain(&Inner), "the disk is full");
+    }
 
     fn track() -> Arc<Track> {
         Arc::new(Track {

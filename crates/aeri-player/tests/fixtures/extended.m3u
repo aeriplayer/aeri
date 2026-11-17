@@ -1,0 +1,5 @@
+#EXTM3U
+#EXTINF:123,Artist - First
+one.flac
+#EXTINF:-1,Artist - Second
+album/two.mp3

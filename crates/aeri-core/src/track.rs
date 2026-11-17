@@ -1,5 +1,6 @@
 //! What is played.
 
+use std::fmt;
 use std::path::PathBuf;
 use std::time::Duration;
 
@@ -9,6 +10,14 @@ use std::time::Duration;
 pub enum Source {
     /// A file on the local filesystem.
     File(PathBuf),
+}
+
+impl fmt::Display for Source {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::File(path) => path.display().fmt(f),
+        }
+    }
 }
 
 /// The minimal track (ADR 0009). The full metadata type arrives with the library.
@@ -24,4 +33,16 @@ pub struct Track {
     pub artist: Option<String>,
     /// The album tag.
     pub album: Option<String>,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_file_source_displays_as_its_path() {
+        let source = Source::File(PathBuf::from("music/song.flac"));
+
+        assert_eq!(source.to_string(), "music/song.flac");
+    }
 }

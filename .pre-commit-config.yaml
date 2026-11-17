@@ -235,13 +235,16 @@ repos:
         priority: manual
 
       - id: fuzz
-        name: fuzz the decoder (cargo fuzz)
+        name: fuzz the decoder and the playlist parser (cargo fuzz)
         language: system
         shell: sh
         entry: |
-          cd fuzz && mkdir -p corpus/decode &&
+          cd fuzz && mkdir -p corpus/decode corpus/m3u &&
           cargo fuzz run --target "$(rustc -vV | sed -n 's/^host: //p')" \
             decode corpus/decode ../crates/aeri-decode/tests/fixtures -- \
+            -max_total_time="${FUZZ_SECONDS:-60}" -timeout=10 &&
+          cargo fuzz run --target "$(rustc -vV | sed -n 's/^host: //p')" \
+            m3u corpus/m3u ../crates/aeri-player/tests/fixtures -- \
             -max_total_time="${FUZZ_SECONDS:-60}" -timeout=10
         always_run: true
         pass_filenames: false

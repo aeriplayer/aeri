@@ -10,6 +10,7 @@ cargo-fuzz = true
 
 [dependencies]
 aeri-decode   = { path = "../crates/aeri-decode" }
+aeri-player   = { path = "../crates/aeri-player" }
 libfuzzer-sys = { version = "0.4.13", default-features = false, features = ["link_libfuzzer"] }
 
 # ADR 0015: not a member of the root workspace.
@@ -24,3 +25,10 @@ bench = false
 
 [profile.release]
 debug = 1
+
+[[bin]]
+name  = "m3u"
+path  = "fuzz_targets/m3u.rs"
+test  = false
+doc   = false
+bench = false
