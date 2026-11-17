@@ -320,3 +320,4 @@ Resolve each before the crate that depends on it is written.
 | Engine events | Four events on a caller-owned unbounded channel; the engine owns the DSP chain | [ADR 0023](adr/0023-engine-events-and-dsp-chain.md) |
 | What plays next | One pure `Sequence` value in `aeri-player`; the actor only calls it | [ADR 0024](adr/0024-aeri-player-sequence-is-pure.md) |
 | Player actor | One inbox for commands and engine events; slot offers matched by identity | [ADR 0025](adr/0025-player-actor-and-offers.md) |
+| Underruns | Counted only once audio has played since the last flush | [ADR 0026](adr/0026-underruns-count-only-after-playing.md) |
