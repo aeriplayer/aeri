@@ -35,7 +35,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(miri, ignore = "reads files, which Miri's isolation forbids")]
     fn a_plain_list_gives_its_paths_resolved_against_the_base() {
         assert_eq!(
             parsed("basic.m3u"),
@@ -48,7 +47,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(miri, ignore = "reads files, which Miri's isolation forbids")]
     fn the_extended_format_gives_the_same_paths_without_its_comments() {
         assert_eq!(
             parsed("extended.m3u"),
@@ -57,13 +55,11 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(miri, ignore = "reads files, which Miri's isolation forbids")]
     fn non_ascii_names_are_read_correctly() {
         assert_eq!(parsed("unicode.m3u"), under(&["café.flac", "東京/two.mp3"]));
     }
 
     #[test]
-    #[cfg_attr(miri, ignore = "reads files, which Miri's isolation forbids")]
     fn a_messy_list_gives_only_its_real_entries() {
         assert_eq!(
             parsed("messy.m3u"),
@@ -72,7 +68,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(miri, ignore = "reads files, which Miri's isolation forbids")]
     fn a_list_of_comments_gives_nothing() {
         assert_eq!(parsed("empty.m3u"), Vec::<PathBuf>::new());
     }

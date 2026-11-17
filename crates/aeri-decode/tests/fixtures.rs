@@ -50,7 +50,10 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(miri, ignore = "opens files, which Miri's isolation forbids")]
+    #[cfg_attr(
+        miri,
+        ignore = "decodes a whole file; interpreting symphonia takes minutes, and it is fuzzed (ADR 0015, ADR 0029)"
+    )]
     fn flac_decodes_every_frame_of_a_loud_sine() {
         let mut decoder = open("sine.flac");
 
@@ -62,7 +65,10 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(miri, ignore = "opens files, which Miri's isolation forbids")]
+    #[cfg_attr(
+        miri,
+        ignore = "decodes a whole file; interpreting symphonia takes minutes, and it is fuzzed (ADR 0015, ADR 0029)"
+    )]
     fn mp3_decodes_exactly_the_source_length_because_encoder_delay_is_trimmed() {
         let mut decoder = open("sine.mp3");
 
@@ -74,7 +80,10 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(miri, ignore = "opens files, which Miri's isolation forbids")]
+    #[cfg_attr(
+        miri,
+        ignore = "decodes a whole file; interpreting symphonia takes minutes, and it is fuzzed (ADR 0015, ADR 0029)"
+    )]
     fn seeking_lands_at_or_before_the_target_and_decodes_the_rest() {
         let target = Duration::from_millis(500);
         for name in ["sine.flac", "sine.mp3"] {
@@ -98,7 +107,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(miri, ignore = "opens files, which Miri's isolation forbids")]
     fn a_missing_file_is_an_io_error() {
         let error = aeri_decode::open(&fixture("missing.flac")).err();
 
@@ -106,7 +114,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(miri, ignore = "opens files, which Miri's isolation forbids")]
     fn a_text_file_named_flac_is_unsupported() {
         let error = aeri_decode::open(&fixture("not-audio.flac")).err();
 
@@ -126,19 +133,16 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(miri, ignore = "opens files, which Miri's isolation forbids")]
     fn flac_reports_the_replaygain_in_its_vorbis_comments() {
         assert_eq!(open("sine-rg.flac").replay_gain(), tagged());
     }
 
     #[test]
-    #[cfg_attr(miri, ignore = "opens files, which Miri's isolation forbids")]
     fn mp3_reports_the_replaygain_in_its_id3v2_tag() {
         assert_eq!(open("sine-rg.mp3").replay_gain(), tagged());
     }
 
     #[test]
-    #[cfg_attr(miri, ignore = "opens files, which Miri's isolation forbids")]
     fn files_without_the_tags_report_none() {
         for name in ["sine.flac", "sine.mp3", "sine-48k.flac"] {
             assert_eq!(open(name).replay_gain(), ReplayGain::default(), "{name}");
@@ -146,7 +150,10 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(miri, ignore = "opens files, which Miri's isolation forbids")]
+    #[cfg_attr(
+        miri,
+        ignore = "decodes a whole file; interpreting symphonia takes minutes, and it is fuzzed (ADR 0015, ADR 0029)"
+    )]
     fn a_file_with_malformed_values_still_plays_and_keeps_the_good_one() {
         let mut decoder = open("sine-rg-bad.flac");
 
@@ -162,7 +169,10 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(miri, ignore = "opens files, which Miri's isolation forbids")]
+    #[cfg_attr(
+        miri,
+        ignore = "decodes a whole file; interpreting symphonia takes minutes, and it is fuzzed (ADR 0015, ADR 0029)"
+    )]
     fn tags_do_not_change_what_decodes() {
         for (plain, tagged) in [("sine.flac", "sine-rg.flac"), ("sine.mp3", "sine-rg.mp3")] {
             let (plain_frames, plain_peak) = drain(open(plain).as_mut());
@@ -173,7 +183,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(miri, ignore = "checks files exist, which Miri's isolation forbids")]
     fn every_extension_is_lowercase_and_has_a_fixture() {
         for extension in aeri_decode::EXTENSIONS {
             assert_eq!(*extension, extension.to_lowercase());

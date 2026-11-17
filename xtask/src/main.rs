@@ -20,6 +20,7 @@ tasks:
   crate-cooldown no locked crate version younger than .config/crate-cooldown.toml allows
   coverage       tests once, then the coverage floors (cargo llvm-cov)
   mutants        mutation-test the lines changed since $MUTANTS_BASE (default origin/main)
+  miri           the tests under Miri (needs a nightly with miri)
   loom           the loom model of the real-time bridge
   fuzz           every fuzz target for $FUZZ_SECONDS (default 60)
   release        not implemented yet; use `dist build`";
@@ -40,6 +41,7 @@ fn main() -> Result<()> {
         Some("crate-cooldown") => cooldown::check(),
         Some("coverage") => checks::coverage(),
         Some("mutants") => checks::mutants(),
+        Some("miri") => checks::miri(),
         Some("loom") => checks::loom(),
         Some("fuzz") => checks::fuzz(),
         Some("release") => bail!("`release` is not implemented yet; run `dist build`"),

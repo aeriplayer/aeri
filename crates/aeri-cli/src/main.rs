@@ -230,10 +230,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[cfg_attr(
-        miri,
-        ignore = "the tokio runtime needs the operating system's event queue"
-    )]
     async fn the_next_key_is_the_next_one_sent_and_nothing_when_there_is_no_keyboard() {
         let (send, receive) = mpsc::unbounded_channel();
         send.send(KeyEvent::new(
