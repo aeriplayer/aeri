@@ -24,7 +24,7 @@ impl Volume {
         } else if db >= 0.0 {
             Self::UNITY
         } else {
-            Self(10.0_f32.powf(db / 20.0))
+            Self(10.0_f32.powf(db / 20.0).min(1.0))
         }
     }
 
@@ -94,21 +94,18 @@ mod tests {
 
     proptest! {
         #[test]
-        #[cfg_attr(miri, ignore = "proptest reads its regression file, which Miri's isolation forbids")]
         fn from_db_is_always_a_valid_volume(db in any::<f32>()) {
             let linear = Volume::from_db(db).linear();
             prop_assert!((0.0..=1.0).contains(&linear));
         }
 
         #[test]
-        #[cfg_attr(miri, ignore = "proptest reads its regression file, which Miri's isolation forbids")]
         fn db_round_trips_through_from_db(db in -90.0_f32..0.0) {
             let back = Volume::from_db(db).db();
             prop_assert!((back - db).abs() < 1e-3, "{db} came back as {back}");
         }
 
         #[test]
-        #[cfg_attr(miri, ignore = "proptest reads its regression file, which Miri's isolation forbids")]
         fn from_db_is_monotonic(a in -120.0_f32..0.0, b in -120.0_f32..0.0) {
             prop_assert_eq!(a <= b, Volume::from_db(a) <= Volume::from_db(b));
         }
