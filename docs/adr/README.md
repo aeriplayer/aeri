@@ -77,3 +77,4 @@ verified. Include the condition under which this should be revisited.
 | [0022](0022-decoder-reports-replaygain.md) | The decoder reports ReplayGain, and lists the extensions it opens |
 | [0023](0023-engine-events-and-dsp-chain.md) | The engine reports events on a caller-owned unbounded channel and runs the DSP chain |
 | [0024](0024-aeri-player-sequence-is-pure.md) | `aeri-player` decides what plays next in one pure value, the sequence |
+| [0025](0025-player-actor-and-offers.md) | The player is an actor with one inbox; slot offers are told apart by identity |
