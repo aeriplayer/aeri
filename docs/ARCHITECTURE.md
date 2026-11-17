@@ -318,3 +318,4 @@ Resolve each before the crate that depends on it is written.
 | DSP chain | `aeri-dsp`: interleaved `f32`, in place, never changes the stream spec | [ADR 0020](adr/0020-aeri-dsp-in-place-interleaved-chain.md) |
 | Allocation guard | A shared, test-only crate used by `aeri-audio` and `aeri-dsp` | [ADR 0021](adr/0021-shared-allocation-guard-crate.md) |
 | ReplayGain source | The decoder reports it from the tags symphonia parsed | [ADR 0022](adr/0022-decoder-reports-replaygain.md) |
+| Engine events | Four events on a caller-owned unbounded channel; the engine owns the DSP chain | [ADR 0023](adr/0023-engine-events-and-dsp-chain.md) |
