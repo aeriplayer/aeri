@@ -1,5 +1,5 @@
 //! The multi-command checks the manual hooks and CI run (ADR 0028): coverage, mutation
-//! testing, the loom model and fuzzing.
+//! testing, Miri, the loom model and fuzzing.
 
 use std::process::Command;
 
@@ -43,6 +43,11 @@ const COVERAGE_STEPS: [&[&str]; 4] = [
     ],
 ];
 
+/// The packages Miri leaves out (ADR 0029): `xtask` has no `unsafe`, and the engine, the player and
+/// the CLI contain neither `unsafe` nor floating-point arithmetic, so Miri has nothing to find
+/// there, and it would cost about a minute per test that plays audio.
+const MIRI_EXCLUDED: [&str; 4] = ["xtask", "aeri-engine", "aeri-player", "aeri-cli"];
+
 /// Fuzz targets with the directory of seed inputs each starts from, relative to `fuzz/`.
 const FUZZ_TARGETS: [(&str, &str); 2] = [
     ("decode", "../crates/aeri-decode/tests/fixtures"),
@@ -85,6 +90,18 @@ pub(crate) fn mutants() -> Result<()> {
         "target/mutants.diff",
         "--no-shuffle",
     ]))
+}
+
+/// Runs the tests under Miri. Isolation is off so tests can read the committed fixtures, proptest's
+/// regression files are off, and it runs few cases, so property tests run rather than being skipped.
+pub(crate) fn miri() -> Result<()> {
+    run(cargo()
+        .current_dir(workspace_root()?)
+        .env("MIRIFLAGS", "-Zmiri-disable-isolation")
+        .env("PROPTEST_DISABLE_FAILURE_PERSISTENCE", "true")
+        .env("PROPTEST_CASES", "8")
+        .args(["+nightly", "miri", "test", "--workspace", "--all-features"])
+        .args(MIRI_EXCLUDED.iter().flat_map(|name| ["--exclude", name])))
 }
 
 /// Runs the loom model of the real-time bridge, in its own target directory because
@@ -205,6 +222,23 @@ mod tests {
     fn every_coverage_step_is_a_llvm_cov_command() {
         assert!(COVERAGE_STEPS.iter().all(|step| step[0] == "llvm-cov"));
         assert_eq!(COVERAGE_STEPS.len(), 4);
+    }
+
+    #[test]
+    fn miri_leaves_out_only_crates_that_exist() {
+        let manifest =
+            fs_err::read_to_string(workspace_root().unwrap().join("Cargo.toml")).unwrap();
+        for name in MIRI_EXCLUDED {
+            let member = if name == "xtask" {
+                "\"xtask\"".to_owned()
+            } else {
+                format!("crates/{name}\"")
+            };
+            assert!(
+                manifest.contains(&member),
+                "{name} is not a workspace member"
+            );
+        }
     }
 
     #[test]

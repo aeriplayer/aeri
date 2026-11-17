@@ -153,7 +153,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(miri, ignore = "reads files, which Miri's isolation forbids")]
     fn a_file_is_taken_as_it_is_whatever_its_extension() {
         let tree = Tree::new();
         let odd = tree.file("noise.xyz", b"");
@@ -163,7 +162,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(miri, ignore = "reads files, which Miri's isolation forbids")]
     fn a_directory_gives_its_playable_files_sorted_by_path_at_any_depth() {
         let tree = Tree::new();
         let (a2, a1) = (tree.file("a/02.MP3", b""), tree.file("a/01.flac", b""));
@@ -177,7 +175,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(miri, ignore = "reads files, which Miri's isolation forbids")]
     fn inputs_keep_the_order_given_and_each_is_expanded_in_place() {
         let tree = Tree::new();
         let later = tree.file("z.flac", b"");
@@ -192,7 +189,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(miri, ignore = "reads files, which Miri's isolation forbids")]
     fn a_playlist_gives_the_paths_it_lists_resolved_against_its_own_directory() {
         let tree = Tree::new();
         let list = tree.file(
@@ -210,7 +206,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(miri, ignore = "reads files, which Miri's isolation forbids")]
     fn a_playlist_that_is_not_valid_utf8_still_gives_the_names_that_are() {
         let tree = Tree::new();
         let list = tree.file("mix.m3u8", b"se\xf1or.flac\nok.flac\n");
@@ -222,7 +217,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(miri, ignore = "reads files, which Miri's isolation forbids")]
     fn a_path_that_does_not_exist_is_an_error_naming_it() {
         let tree = Tree::new();
         let missing = tree.at("gone.flac");
@@ -237,7 +231,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(miri, ignore = "reads files, which Miri's isolation forbids")]
     fn a_directory_with_nothing_playable_is_an_error_naming_it() {
         let tree = Tree::new();
         let empty = tree.dir("empty");
@@ -256,7 +249,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(miri, ignore = "reads files, which Miri's isolation forbids")]
     fn a_playlist_that_lists_nothing_is_an_error_naming_it() {
         let tree = Tree::new();
         let list = tree.file("none.m3u", b"#EXTM3U\n# nothing\n\n");
@@ -268,7 +260,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(miri, ignore = "reads files, which Miri's isolation forbids")]
     fn an_empty_directory_among_good_inputs_is_still_an_error() {
         let tree = Tree::new();
         let good = tree.file("a.flac", b"");
@@ -280,7 +271,6 @@ mod tests {
 
     #[cfg(unix)]
     #[test]
-    #[cfg_attr(miri, ignore = "reads files, which Miri's isolation forbids")]
     fn links_to_files_are_followed_and_links_to_directories_and_to_nothing_are_not() {
         use fs_err::os::unix::fs::symlink;
 

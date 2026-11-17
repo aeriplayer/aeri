@@ -60,7 +60,7 @@ Install the tools once with `cargo xtask install-tools`.
 - **No flaky tests.** No retries, no sleeps as synchronisation, no dependence on test order or wall-clock time. A test that fails one run in a hundred is failing.
 - **A bug fix starts with a failing test** that reproduces it.
 - **Property tests commit their regressions.** `proptest` writes failing cases to `proptest-regressions/`; those files are checked in.
-- **Only a test Miri cannot execute** (C code, other processes) is marked `#[cfg_attr(miri, ignore = "reason")]`. Everything else runs, property tests included: the `miri` hook switches off their regression files and lowers their case count through the environment, so no test is skipped for that.
+- **Miri runs where it can find something**: every crate with `unsafe` or floating-point arithmetic ([ADR 0029](adr/0029-the-engine-opens-tracks-through-an-opener.md)). In those crates only a test Miri cannot execute is marked `#[cfg_attr(miri, ignore = "reason")]`: C code, or the real decoder, which Miri interprets for over a minute per file. Everything else runs, property tests included. Never assert that two evaluations of `powf`, `log10` or similar are bit-equal: Miri perturbs them, and the contract is only that they agree to within rounding.
 - **Fixtures are small, committed, and reproducible:** the generating command sits in a `README.md` beside them.
 
 ## Not yet in place

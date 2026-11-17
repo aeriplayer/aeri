@@ -12,7 +12,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(miri, ignore = "spawns a process, which Miri cannot do")]
     fn help_lists_the_play_command() {
         let output = aeri(&["--help"]);
 
@@ -25,7 +24,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(miri, ignore = "spawns a process, which Miri cannot do")]
     fn playing_a_missing_file_fails_and_names_it() {
         let output = aeri(&["play", "no-such-file.flac"]);
         let stderr = String::from_utf8_lossy(&output.stderr);
@@ -39,7 +37,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(miri, ignore = "spawns a process, which Miri cannot do")]
     fn play_without_a_path_is_a_usage_error() {
         let output = aeri(&["play"]);
 
@@ -75,7 +72,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(miri, ignore = "spawns a process, which Miri cannot do")]
     fn a_directory_with_nothing_playable_fails_and_names_it() {
         let scratch = Scratch::new("empty-dir");
         fs_err::write(scratch.0.join("readme.txt"), "not audio").expect("the file is written");
@@ -86,7 +82,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(miri, ignore = "spawns a process, which Miri cannot do")]
     fn a_playlist_that_lists_nothing_fails_and_names_it() {
         let scratch = Scratch::new("empty-list");
         let list = scratch.0.join("none.m3u");
@@ -98,7 +93,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(miri, ignore = "spawns a process, which Miri cannot do")]
     fn one_missing_path_among_good_ones_fails_before_anything_plays() {
         let scratch = Scratch::new("mixed");
         let good = scratch.0.join("a.flac");
@@ -111,7 +105,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(miri, ignore = "spawns a process, which Miri cannot do")]
     fn a_volume_that_is_not_a_number_is_a_usage_error() {
         let output = aeri(&["play", "--volume", "loud", "a.flac"]);
 
@@ -120,7 +113,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(miri, ignore = "spawns a process, which Miri cannot do")]
     fn help_lists_the_play_flags() {
         let output = aeri(&["play", "--help"]);
         let stdout = String::from_utf8_lossy(&output.stdout);

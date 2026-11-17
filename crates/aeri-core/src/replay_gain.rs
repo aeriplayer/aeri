@@ -160,20 +160,18 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(
-        miri,
-        ignore = "Miri perturbs `powf`, so two calls differ in the last bit"
-    )]
     fn a_peak_that_already_fits_changes_nothing() {
         let with = ReplayGain {
             track_gain_db: Some(6.0),
             track_peak: Some(0.4),
             ..ReplayGain::default()
         };
-        let without = gain(Some(6.0), None);
-        assert_eq!(
-            with.factor(ReplayGainMode::Track).to_bits(),
-            without.factor(ReplayGainMode::Track).to_bits()
+        let without = gain(Some(6.0), None).factor(ReplayGainMode::Track);
+        let with = with.factor(ReplayGainMode::Track);
+        // Two evaluations of `powf` agree to within rounding, not necessarily to the last bit.
+        assert!(
+            (with - without).abs() <= without * 1e-6,
+            "{with} vs {without}"
         );
     }
 
