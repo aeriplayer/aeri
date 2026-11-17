@@ -5,22 +5,27 @@
 
 <h1 align="center">aeri</h1>
 
-<p align="center">A music player for macOS and Linux in the tradition of <a href="https://www.foobar2000.org/">foobar2000</a>, written in Rust.</p>
+<p align="center">A music library, looked after properly. Plays like <a href="https://www.foobar2000.org/">foobar2000</a>, written in Rust.</p>
 <!-- rumdl-enable MD033 MD041 -->
 
 > [!NOTE]
 > aeri is in early development. Today it plays FLAC and MP3 files, directories of them, and M3U playlists from the command line. Nothing has been released.
 
-## What aeri is for
+## What aeri is
 
-aeri is for people who keep a music library and want a player built around it:
+Most players treat your library as a pile of files to play. aeri treats it as something you curate: scanned, tagged, searched, sorted and kept tidy over years, with playback as one thing you do with it.
 
-- playback organised around playlists;
-- a music library you can search;
-- one small script language for how tracks are shown and how they are searched;
-- an interface assembled from widgets, in a layout you control.
+foobar2000 is the starting point, because it got the foundations right: playlists first, tags you can trust, and everything about how music is shown or found is yours to define. aeri begins there, then aims further.
 
-None of those exist yet. The [roadmap](docs/ROADMAP.md) says when each arrives.
+## How aeri is meant to work
+
+Good defaults, and every one of them overridable. [ruff](https://docs.astral.sh/ruff/) is the model: it works the moment you install it, and nothing it does is beyond your say.
+
+- **Works on first run.** Point aeri at a directory and the library, the layout and the columns make sense without a settings screen.
+- **Nothing is hard-coded that could be yours.** Columns, groupings, filters and searches are small scripts. The interface is a layout you can rearrange. A default is only a starting script or layout that you can edit or replace.
+- **Nothing changes unless you say so.** aeri never rewrites your tags, renames your files or reorganises your folders on its own. Any change to your files is a request you make, previewed first.
+
+None of this exists yet beyond the player. The [roadmap](docs/ROADMAP.md) says when each part arrives.
 
 aeri supports Apple Silicon Macs, and Linux with PipeWire. No support for Windows is planned.
 
