@@ -20,8 +20,8 @@ pub enum EngineEvent {
     NowPlaying(Arc<Track>),
     /// A track could not be opened or failed while decoding, and was skipped.
     ///
-    /// A slot track that cannot be opened was already taken, so the engine ends after the
-    /// current track.
+    /// A slot track that cannot be opened is reported when it is set, and the slot stays empty:
+    /// the current track plays on, and the owner can offer another one.
     Failed(Arc<Track>),
     /// Playback stopped on its own: the current track ended with the slot empty, or the
     /// output failed. An explicit `stop` emits nothing.

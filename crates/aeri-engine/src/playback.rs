@@ -73,7 +73,8 @@ pub(crate) struct Playback {
     chain: Chain,
     /// The stream spec the sink is open for, and the spec it negotiated.
     opened: Option<(StreamSpec, StreamSpec)>,
-    next: Option<Arc<Track>>,
+    /// The track taken when the current one ends, already opened (ADR 0027).
+    next: Option<(Arc<Track>, Box<dyn Decoder>)>,
     active: Option<Active>,
     last_published: Instant,
 }
@@ -210,7 +211,7 @@ impl Playback {
         let (reply, result) = match command {
             Command::Play { track, reply } => (reply, self.play(track)),
             Command::SetNext { track, reply } => {
-                self.next = track;
+                self.set_next(track);
                 (reply, Ok(()))
             }
             Command::Pause(reply) => {
@@ -242,6 +243,23 @@ impl Playback {
         if reply.send(result).is_err() {
             tracing::debug!("a caller stopped waiting for its reply");
         }
+    }
+
+    /// Fills or clears the slot. A file that cannot be opened is reported at once and leaves the
+    /// slot empty, so the current track plays on and the owner can offer another (ADR 0027).
+    fn set_next(&mut self, track: Option<Arc<Track>>) {
+        self.next = track.and_then(|track| match aeri_decode::open(&track.source) {
+            Ok(decoder) => Some((track, decoder)),
+            Err(error) => {
+                tracing::warn!(
+                    file = %track.source,
+                    reason = %chain(&error),
+                    "the next track cannot be opened"
+                );
+                (self.events)(EngineEvent::Failed(track));
+                None
+            }
+        });
     }
 
     fn play(&mut self, track: Arc<Track>) -> Result<(), EngineError> {
@@ -369,24 +387,9 @@ impl Playback {
         };
         let taken = match active.deferred.take() {
             Some(taken) => Some(taken),
-            None => match self.next.take() {
-                None => None,
-                Some(track) => match aeri_decode::open(&track.source) {
-                    Ok(decoder) => {
-                        (self.events)(EngineEvent::TookNext(Arc::clone(&track)));
-                        Some((track, decoder))
-                    }
-                    Err(error) => {
-                        tracing::error!(
-                            file = %track.source,
-                            reason = %chain(&error),
-                            "the next track cannot be opened; stopping after this one"
-                        );
-                        (self.events)(EngineEvent::Failed(track));
-                        None
-                    }
-                },
-            },
+            None => self.next.take().inspect(|(track, _)| {
+                (self.events)(EngineEvent::TookNext(Arc::clone(track)));
+            }),
         };
         let Some((next, decoder)) = taken else {
             active.end = End::Stop;

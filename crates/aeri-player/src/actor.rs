@@ -463,6 +463,9 @@ impl Actor {
             }
             self.sequence.take(offer.position);
             self.failures += 1;
+            if self.failures < self.failure_limit() {
+                self.refill();
+            }
         } else if self.is_heard_or_taken(track) {
             self.failures += 1;
         } else {

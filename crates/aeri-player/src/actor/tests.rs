@@ -9,6 +9,7 @@ use aeri_engine::{FakeSink, FakeSinkObserver};
 
 use super::*;
 use crate::ids::{EntryId, PlaylistId};
+use crate::sequence::PlaybackOrder;
 
 fn track(file: &str, title: &str) -> Arc<Track> {
     let path: PathBuf = [
@@ -242,7 +243,7 @@ fn hearing_a_taken_track_makes_it_the_current_one_and_clears_the_failure_count()
 
 #[test]
 #[cfg_attr(miri, ignore = "decodes files, which Miri's isolation forbids")]
-fn a_slot_that_failed_to_open_is_passed_over_and_counted() {
+fn a_slot_that_failed_to_open_is_passed_over_counted_and_replaced_by_the_next() {
     let mut harness = harness(&["sine.flac", "missing.flac", "sine.flac"]);
     harness.play();
     let slot = offered(&harness, 0);
@@ -251,8 +252,8 @@ fn a_slot_that_failed_to_open_is_passed_over_and_counted() {
 
     assert_eq!(harness.actor.failures, 1);
     assert_eq!(harness.actor.sequence.current(), Some(harness.at(1)));
-    assert!(harness.actor.offers.is_empty());
-    assert_eq!(harness.actor.in_slot, None);
+    assert_eq!(harness.actor.in_slot, Some(harness.at(2)));
+    assert_eq!(harness.actor.offers.len(), 1);
 }
 
 #[test]
@@ -404,4 +405,23 @@ fn a_logged_error_names_every_cause_outermost_first() {
 #[test]
 fn an_error_without_a_cause_is_just_its_message() {
     assert_eq!(chain(&Inner), "the disk is full");
+}
+
+#[test]
+#[cfg_attr(miri, ignore = "decodes files, which Miri's isolation forbids")]
+fn once_as_many_slots_have_failed_as_the_playlist_has_entries_the_slot_is_left_empty() {
+    let mut harness = harness(&["sine.flac", "missing.flac"]);
+    harness
+        .actor
+        .sequence
+        .set_order(PlaybackOrder::RepeatPlaylist);
+    harness.play();
+    let slot = offered(&harness, 0);
+    harness.actor.failures = 1;
+
+    harness.actor.on_event(EngineEvent::Failed(slot));
+
+    assert_eq!(harness.actor.failures, 2);
+    assert_eq!(harness.actor.in_slot, None);
+    assert!(harness.actor.offers.is_empty());
 }
