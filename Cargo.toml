@@ -25,6 +25,7 @@ aeri-alloc-guard = { path = "crates/aeri-alloc-guard" }
 aeri-audio       = { path = "crates/aeri-audio" }
 aeri-core        = { path = "crates/aeri-core" }
 aeri-decode      = { path = "crates/aeri-decode" }
+aeri-dsp         = { path = "crates/aeri-dsp" }
 aeri-engine      = { path = "crates/aeri-engine" }
 
 anyhow = { version = "1.0.104", default-features = false, features = ["std"] }

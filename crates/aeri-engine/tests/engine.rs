@@ -9,9 +9,12 @@ mod tests {
     use std::time::Duration;
 
     use aeri_audio::{FakeSink, FakeSinkObserver, SinkCall};
-    use aeri_core::{Channels, PlaybackState, SampleRate, Source, StreamSpec, Track, Transport};
-    use aeri_engine::{Engine, EngineError};
-    use tokio::sync::watch;
+    use aeri_core::{
+        Channels, PlaybackState, ReplayGainMode, SampleRate, Source, StreamSpec, Track, Transport,
+        Volume,
+    };
+    use aeri_engine::{Engine, EngineError, EngineEvent};
+    use tokio::sync::{mpsc, watch};
     use tokio::time::timeout;
 
     const FRAMES: usize = 44_100;
@@ -53,10 +56,13 @@ mod tests {
         (sink, observer)
     }
 
-    fn engine(sink: FakeSink) -> (Engine, watch::Receiver<PlaybackState>) {
-        let engine = Engine::spawn(Box::new(sink)).expect("the playback thread starts");
+    type Events = mpsc::UnboundedReceiver<EngineEvent>;
+
+    fn engine(sink: FakeSink) -> (Engine, watch::Receiver<PlaybackState>, Events) {
+        let (events, received) = mpsc::unbounded_channel();
+        let engine = Engine::spawn(Box::new(sink), events).expect("the playback thread starts");
         let state = engine.subscribe();
-        (engine, state)
+        (engine, state, received)
     }
 
     async fn until(
@@ -125,7 +131,7 @@ mod tests {
     #[cfg_attr(miri, ignore = "decodes files, which Miri's isolation forbids")]
     async fn one_track_buffers_plays_every_frame_and_stops() {
         let (sink, observer) = held_sink();
-        let (engine, mut state) = engine(sink);
+        let (engine, mut state, _events) = engine(sink);
 
         engine
             .play(track("sine.flac", "one"))
@@ -160,7 +166,7 @@ mod tests {
     #[cfg_attr(miri, ignore = "decodes files, which Miri's isolation forbids")]
     async fn pausing_holds_playback_and_resuming_loses_no_frames() {
         let (sink, observer) = held_sink();
-        let (engine, mut state) = engine(sink);
+        let (engine, mut state, _events) = engine(sink);
         engine
             .play(track("sine.flac", "one"))
             .await
@@ -188,7 +194,7 @@ mod tests {
     #[cfg_attr(miri, ignore = "decodes files, which Miri's isolation forbids")]
     async fn seeking_flushes_once_and_plays_from_near_the_target() {
         let (sink, observer) = held_sink();
-        let (engine, mut state) = engine(sink);
+        let (engine, mut state, _events) = engine(sink);
         engine
             .play(track("sine.flac", "one"))
             .await
@@ -215,7 +221,7 @@ mod tests {
     #[cfg_attr(miri, ignore = "decodes files, which Miri's isolation forbids")]
     async fn a_next_track_with_the_same_spec_follows_without_reopening_or_stopping() {
         let (sink, observer) = held_sink();
-        let (engine, mut state) = engine(sink);
+        let (engine, mut state, _events) = engine(sink);
         engine
             .play(track("sine.flac", "first"))
             .await
@@ -256,7 +262,7 @@ mod tests {
     #[cfg_attr(miri, ignore = "decodes files, which Miri's isolation forbids")]
     async fn a_next_track_with_another_spec_reopens_the_output_after_draining() {
         let (sink, observer) = held_sink();
-        let (engine, mut state) = engine(sink);
+        let (engine, mut state, _events) = engine(sink);
         engine
             .play(track("sine.flac", "first"))
             .await
@@ -280,7 +286,7 @@ mod tests {
     #[cfg_attr(miri, ignore = "decodes files, which Miri's isolation forbids")]
     async fn a_missing_file_is_refused_and_leaves_playback_stopped() {
         let (sink, observer) = held_sink();
-        let (engine, state) = engine(sink);
+        let (engine, state, _events) = engine(sink);
 
         let result = engine.play(track("missing.flac", "none")).await;
 
@@ -295,7 +301,7 @@ mod tests {
         let sink =
             FakeSink::new(NonZeroUsize::new(CAPACITY).expect("non-zero")).negotiating(spec(48_000));
         sink.observer().hold();
-        let (engine, state) = engine(sink);
+        let (engine, state, _events) = engine(sink);
 
         engine
             .play(track("sine.flac", "one"))
@@ -313,7 +319,7 @@ mod tests {
     #[cfg_attr(miri, ignore = "decodes files, which Miri's isolation forbids")]
     async fn dropping_every_handle_stops_and_joins_the_thread() {
         let (sink, _observer) = held_sink();
-        let (engine, mut state) = engine(sink);
+        let (engine, mut state, _events) = engine(sink);
         engine
             .play(track("sine.flac", "one"))
             .await
@@ -342,7 +348,7 @@ mod tests {
     #[cfg_attr(miri, ignore = "decodes files, which Miri's isolation forbids")]
     async fn clearing_the_next_slot_stops_after_the_current_track() {
         let (sink, observer) = held_sink();
-        let (engine, mut state) = engine(sink);
+        let (engine, mut state, _events) = engine(sink);
         engine
             .play(track("sine.flac", "first"))
             .await
@@ -364,7 +370,7 @@ mod tests {
     #[cfg_attr(miri, ignore = "decodes files, which Miri's isolation forbids")]
     async fn stopping_discards_buffered_audio_and_plays_no_more() {
         let (sink, observer) = held_sink();
-        let (engine, state) = engine(sink);
+        let (engine, state, _events) = engine(sink);
         engine
             .play(track("sine.flac", "one"))
             .await
@@ -377,5 +383,356 @@ mod tests {
 
         assert_eq!(flushes(&observer), 1);
         assert_eq!(observer.played(), []);
+    }
+
+    /// Every sample of a fixture, decoded without the engine.
+    fn decoded(file: &str) -> Vec<f32> {
+        let mut decoder = aeri_decode::open(&track(file, "").source).expect("fixtures decode");
+        let mut samples = Vec::new();
+        while let Some(block) = decoder.next_block().expect("fixtures decode cleanly") {
+            samples.extend_from_slice(block);
+        }
+        samples
+    }
+
+    fn scaled(samples: &[f32], factor: f32) -> Vec<f32> {
+        samples.iter().map(|sample| sample * factor).collect()
+    }
+
+    fn bits(samples: &[f32]) -> Vec<u32> {
+        samples.iter().map(|sample| sample.to_bits()).collect()
+    }
+
+    fn half() -> Volume {
+        Volume::from_linear(0.5).expect("in range")
+    }
+
+    async fn next_event(events: &mut Events) -> EngineEvent {
+        timeout(PATIENCE, events.recv())
+            .await
+            .expect("an event arrived in time")
+            .expect("the engine is still sending")
+    }
+
+    fn label(event: &EngineEvent) -> String {
+        let name = |track: &Arc<Track>| track.title.clone().unwrap_or_default();
+        match event {
+            EngineEvent::TookNext(track) => format!("took {}", name(track)),
+            EngineEvent::NowPlaying(track) => format!("now {}", name(track)),
+            EngineEvent::Failed(track) => format!("failed {}", name(track)),
+            EngineEvent::Ended => "ended".to_owned(),
+            _ => "unknown".to_owned(),
+        }
+    }
+
+    /// Events up to and including `Ended`.
+    async fn events_until_ended(events: &mut Events) -> Vec<String> {
+        let mut seen = Vec::new();
+        loop {
+            let event = next_event(events).await;
+            seen.push(label(&event));
+            if matches!(event, EngineEvent::Ended) {
+                return seen;
+            }
+        }
+    }
+
+    #[tokio::test]
+    #[cfg_attr(miri, ignore = "decodes files, which Miri's isolation forbids")]
+    async fn taking_the_slot_is_announced_before_the_track_is_heard_then_the_end() {
+        let (sink, observer) = held_sink();
+        let (engine, _state, mut events) = engine(sink);
+        engine
+            .play(track("sine.flac", "first"))
+            .await
+            .expect("the fixture plays");
+        engine
+            .set_next(Some(track("sine.flac", "second")))
+            .await
+            .expect("set_next is answered");
+
+        observer.release();
+
+        assert_eq!(
+            events_until_ended(&mut events).await,
+            ["took second", "now second", "ended"]
+        );
+    }
+
+    #[tokio::test]
+    #[cfg_attr(miri, ignore = "decodes files, which Miri's isolation forbids")]
+    async fn a_next_track_that_cannot_be_opened_fails_and_playback_ends_after_the_current_one() {
+        let (sink, observer) = held_sink();
+        let (engine, _state, mut events) = engine(sink);
+        engine
+            .play(track("sine.flac", "first"))
+            .await
+            .expect("the fixture plays");
+        engine
+            .set_next(Some(track("missing.flac", "gone")))
+            .await
+            .expect("set_next is answered");
+
+        observer.release();
+
+        assert_eq!(
+            events_until_ended(&mut events).await,
+            ["failed gone", "ended"]
+        );
+        assert_eq!(observer.played().len() / 2, FRAMES);
+    }
+
+    #[tokio::test]
+    #[cfg_attr(miri, ignore = "decodes files, which Miri's isolation forbids")]
+    async fn a_slot_set_after_the_take_is_for_the_track_after_the_taken_one() {
+        let (sink, observer) = held_sink();
+        let (engine, _state, mut events) = engine(sink);
+        engine
+            .play(track("sine.flac", "first"))
+            .await
+            .expect("the fixture plays");
+        engine
+            .set_next(Some(track("sine.flac", "second")))
+            .await
+            .expect("set_next is answered");
+
+        observer.allow(FRAMES as u64 - 100);
+        assert_eq!(label(&next_event(&mut events).await), "took second");
+        engine
+            .set_next(Some(track("sine.flac", "third")))
+            .await
+            .expect("set_next is answered");
+        observer.release();
+
+        assert_eq!(
+            events_until_ended(&mut events).await,
+            ["now second", "took third", "now third", "ended"]
+        );
+        assert_eq!(observer.played().len() / 2, 3 * FRAMES);
+    }
+
+    #[tokio::test]
+    #[cfg_attr(miri, ignore = "decodes files, which Miri's isolation forbids")]
+    async fn a_seek_while_a_reopen_is_pending_keeps_the_taken_track() {
+        let (sink, observer) = held_sink();
+        let (engine, _state, mut events) = engine(sink);
+        engine
+            .play(track("sine.flac", "first"))
+            .await
+            .expect("the fixture plays");
+        engine
+            .set_next(Some(track("sine-48k.flac", "second")))
+            .await
+            .expect("set_next is answered");
+
+        observer.allow(FRAMES as u64 - 100);
+        assert_eq!(label(&next_event(&mut events).await), "took second");
+        engine
+            .seek(Duration::from_millis(500))
+            .await
+            .expect("the fixture seeks");
+        observer.release();
+
+        assert_eq!(
+            events_until_ended(&mut events).await,
+            ["now second", "ended"]
+        );
+        assert_eq!(configures(&observer), [spec(44_100), spec(48_000)]);
+    }
+
+    #[tokio::test]
+    #[cfg_attr(miri, ignore = "decodes files, which Miri's isolation forbids")]
+    async fn play_announces_nothing_and_a_stop_is_silent() {
+        let (sink, observer) = held_sink();
+        let (engine, _state, mut events) = engine(sink);
+
+        engine
+            .play(track("sine.flac", "first"))
+            .await
+            .expect("the fixture plays");
+        engine.stop().await.expect("stop is answered");
+        observer.release();
+        tokio::time::sleep(Duration::from_millis(50)).await;
+
+        assert!(events.try_recv().is_err());
+    }
+
+    #[tokio::test]
+    #[cfg_attr(miri, ignore = "decodes files, which Miri's isolation forbids")]
+    async fn playback_carries_on_when_nobody_is_listening_for_events() {
+        let (sink, observer) = held_sink();
+        let (engine, mut state, events) = engine(sink);
+        drop(events);
+
+        engine
+            .play(track("sine.flac", "first"))
+            .await
+            .expect("the fixture plays");
+        observer.release();
+        until(&mut state, "stopped", stopped).await;
+
+        assert_eq!(observer.played().len() / 2, FRAMES);
+    }
+
+    #[tokio::test]
+    #[cfg_attr(miri, ignore = "decodes files, which Miri's isolation forbids")]
+    async fn half_volume_halves_every_frame_the_sink_receives() {
+        let (sink, observer) = held_sink();
+        let (engine, mut state, _events) = engine(sink);
+        engine.set_volume(half()).await.expect("volume is answered");
+        engine
+            .play(track("sine.flac", "one"))
+            .await
+            .expect("the fixture plays");
+
+        observer.release();
+        until(&mut state, "stopped", stopped).await;
+
+        assert_eq!(
+            bits(&observer.played()),
+            bits(&scaled(&decoded("sine.flac"), 0.5))
+        );
+    }
+
+    #[tokio::test]
+    #[cfg_attr(miri, ignore = "decodes files, which Miri's isolation forbids")]
+    async fn a_volume_change_during_playback_ramps_and_then_holds() {
+        let (sink, observer) = held_sink();
+        let (engine, mut state, _events) = engine(sink);
+        engine
+            .play(track("sine.flac", "one"))
+            .await
+            .expect("the fixture plays");
+        observer.allow(1_000);
+        until(&mut state, "playing", |s| {
+            transport(s) == Some(Transport::Playing)
+        })
+        .await;
+
+        engine.set_volume(half()).await.expect("volume is answered");
+        observer.release();
+        until(&mut state, "stopped", stopped).await;
+
+        let expected = decoded("sine.flac");
+        let played = observer.played();
+        assert_eq!(played.len(), expected.len());
+        let head = 2_000;
+        let tail = 2 * 20_000;
+        assert_eq!(bits(&played[..head]), bits(&expected[..head]));
+        let from = played.len() - tail;
+        assert_eq!(bits(&played[from..]), bits(&scaled(&expected[from..], 0.5)));
+    }
+
+    #[tokio::test]
+    #[cfg_attr(miri, ignore = "decodes files, which Miri's isolation forbids")]
+    async fn unity_volume_with_replaygain_off_delivers_the_decoded_samples_untouched() {
+        let (sink, observer) = held_sink();
+        let (engine, mut state, _events) = engine(sink);
+        engine
+            .set_replay_gain(ReplayGainMode::Off)
+            .await
+            .expect("the mode is answered");
+        engine
+            .play(track("sine-rg.flac", "tagged"))
+            .await
+            .expect("the fixture plays");
+
+        observer.release();
+        until(&mut state, "stopped", stopped).await;
+
+        assert_eq!(bits(&observer.played()), bits(&decoded("sine-rg.flac")));
+    }
+
+    #[tokio::test]
+    #[cfg_attr(miri, ignore = "decodes files, which Miri's isolation forbids")]
+    async fn track_gain_changes_on_the_first_frame_of_the_next_track_with_one_configure() {
+        let tagged = aeri_decode::open(&track("sine-rg.flac", "").source)
+            .expect("fixtures decode")
+            .replay_gain()
+            .factor(ReplayGainMode::Track);
+        assert!(tagged < 1.0, "the fixture should be turned down");
+        let (sink, observer) = held_sink();
+        let (engine, mut state, _events) = engine(sink);
+        engine
+            .set_replay_gain(ReplayGainMode::Track)
+            .await
+            .expect("the mode is answered");
+        engine
+            .play(track("sine-rg.flac", "tagged"))
+            .await
+            .expect("the fixture plays");
+        engine
+            .set_next(Some(track("sine.flac", "untagged")))
+            .await
+            .expect("set_next is answered");
+
+        observer.release();
+        until(&mut state, "stopped", stopped).await;
+
+        let played = observer.played();
+        let boundary = 2 * FRAMES;
+        assert_eq!(played.len(), 2 * boundary);
+        assert_eq!(
+            bits(&played[..boundary]),
+            bits(&scaled(&decoded("sine-rg.flac"), tagged))
+        );
+        assert_eq!(bits(&played[boundary..]), bits(&decoded("sine.flac")));
+        assert_eq!(configures(&observer), [spec(44_100)]);
+    }
+
+    #[tokio::test]
+    #[cfg_attr(miri, ignore = "decodes files, which Miri's isolation forbids")]
+    async fn a_seek_resets_the_chain_so_a_pending_volume_change_does_not_ramp() {
+        let (sink, observer) = held_sink();
+        let (engine, mut state, _events) = engine(sink);
+        engine
+            .play(track("sine.flac", "one"))
+            .await
+            .expect("the fixture plays");
+        engine.set_volume(half()).await.expect("volume is answered");
+
+        engine
+            .seek(Duration::from_millis(500))
+            .await
+            .expect("the fixture seeks");
+        observer.release();
+        until(&mut state, "stopped", stopped).await;
+
+        let mut decoder = aeri_decode::open(&track("sine.flac", "").source).expect("decodes");
+        decoder.seek(Duration::from_millis(500)).expect("seeks");
+        let mut expected = Vec::new();
+        while let Some(block) = decoder.next_block().expect("decodes cleanly") {
+            expected.extend_from_slice(block);
+        }
+        assert_eq!(
+            bits(&observer.played_since_flush()),
+            bits(&scaled(&expected, 0.5))
+        );
+    }
+
+    #[tokio::test]
+    #[cfg_attr(miri, ignore = "decodes files, which Miri's isolation forbids")]
+    async fn now_playing_fires_when_the_new_track_is_heard_and_not_before() {
+        let (sink, observer) = held_sink();
+        let (engine, _state, mut events) = engine(sink);
+        engine
+            .play(track("sine.flac", "first"))
+            .await
+            .expect("the fixture plays");
+        engine
+            .set_next(Some(track("sine.flac", "second")))
+            .await
+            .expect("set_next is answered");
+
+        observer.allow(FRAMES as u64 - 1_000);
+        assert_eq!(label(&next_event(&mut events).await), "took second");
+        tokio::time::sleep(Duration::from_millis(50)).await;
+        assert!(
+            events.try_recv().is_err(),
+            "the second track was announced before it was heard"
+        );
+
+        observer.allow(2_000);
+        assert_eq!(label(&next_event(&mut events).await), "now second");
     }
 }

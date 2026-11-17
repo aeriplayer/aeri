@@ -71,6 +71,7 @@ dependencies = [
  "aeri-audio",
  "aeri-core",
  "aeri-decode",
+ "aeri-dsp",
  "thiserror",
  "tokio",
  "tracing",
