@@ -3,6 +3,7 @@ members = [
     "crates/aeri-core",
     "crates/aeri-audio",
     "crates/aeri-decode",
+    "crates/aeri-dsp",
     "crates/aeri-engine",
     "crates/aeri-cli",
     "xtask",

@@ -34,6 +34,7 @@ deny = [
     { crate = "aeri-engine", wrappers = ["aeri-cli"] },
     { crate = "aeri-audio", wrappers = ["aeri-engine"] },
     { crate = "aeri-decode", wrappers = ["aeri-engine"] },
+    { crate = "aeri-dsp", wrappers = ["aeri-engine"] },
 ]
 
 # Crates whose build scripts run arbitrary code at compile time; `cargo xtask check-deps`
