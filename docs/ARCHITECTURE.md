@@ -34,7 +34,7 @@ aeri-core       domain types; no workspace dependencies
 aeri-script     title formatting + queries                  planned · scripting
 aeri-audio      OutputSink + CoreAudio / PipeWire sinks + the real-time thread
 aeri-decode     Decoder over symphonia
-aeri-dsp        DspNode + chain + resampler                 planned · playback
+aeri-dsp        DspNode + chain                             planned · playback
     ↑
 aeri-engine     audio engine: decode → DSP → sink, current track + next slot
 aeri-library    SQLite, scanning, tags, in-memory store     planned · library
@@ -167,11 +167,11 @@ Not up for reconsideration without an ADR.
 | Gapless | Always on, across transitions that keep rate and channel layout | A format change re-inits the output and that gap is accepted (ADR 0003) |
 | ReplayGain | On by default, track and album modes | |
 | Volume | Software, in the DSP chain | Hardware volume off by default, for bit-perfect output |
-| Resampler | `rubato` | Bypassed on the normal path; see below |
+| Resampler | `rubato` | Not built until an output needs it; see below |
 
-#### On the resampler being bypassed
+#### On the resampler not being built
 
-"Follow source" means the output rate normally equals the source rate, so the resampler does no work on the common path. It exists for one case: a macOS device refuses the source rate, and aeri falls back to the nearest supported rate. On Linux, PipeWire resamples in the server when it declines a rate. Without this note the terminal node reads as dead code.
+"Follow source" means the output is asked for the source rate. When a device or server declines it, the platform converts: CoreAudio's output unit on macOS ([ADR 0017](adr/0017-bit-perfect-without-hog-mode.md)), the PipeWire server on Linux ([ADR 0019](adr/0019-pipewire-stream-on-its-own-loop.md)). Both sinks therefore accept every rate, and aeri's own resampler has no caller. The stage is not built until an output exists that cannot convert; `rubato` is the choice for that day.
 
 #### On fades and crossfade
 

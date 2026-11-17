@@ -56,7 +56,7 @@ Small enough to fold into the start of Phase 3. Both phases are specified step b
 
 > A player, not a file opener: playlists, a queue, playback order, volume, ReplayGain. Still driven from the CLI.
 
-Specified step by step in [`design/phase-4-playback.md`](design/phase-4-playback.md), which also lists the decisions still open.
+Specified step by step in [`design/phase-4-playback.md`](design/phase-4-playback.md), with the decisions it rests on.
 
 - [ ] Create `aeri-player`: the `Player` handle ([ADR 0006](adr/0006-frontends-use-the-player-handle.md)); move `aeri-cli` onto it and close the `deny.toml` exception
 - [ ] Playlists with stable entry ids; the active playlist
@@ -64,7 +64,7 @@ Specified step by step in [`design/phase-4-playback.md`](design/phase-4-playback
 - [ ] The queue; stop after current
 - [ ] The engine's "took the next track" event, and the player refilling the slot
 - [ ] Create `aeri-dsp`: `DspNode`, the chain, a registry ([ADR 0002](adr/0002-compiled-in-extension-points.md))
-- [ ] Volume and ReplayGain nodes; `rubato` resampler where PipeWire refuses a rate (CoreAudio converts on macOS, ADR 0017)
+- [ ] Volume and ReplayGain nodes
 - [ ] `aeri-cli`: `play <paths…>`, directories, M3U files; interactive transport keys
 - [ ] Gapless verified end to end across a playlist
 
@@ -152,6 +152,7 @@ Specified step by step in [`design/phase-4-playback.md`](design/phase-4-playback
 Unordered, and each needs its own design.
 
 - More formats (ADR 0007)
+- A `rubato` resampler, when an output exists that cannot convert a rate itself (ADR 0017, ADR 0019)
 - CUE sheets, including embedded
 - Waveform seekbar, spectrum, VU meter
 - Lyrics

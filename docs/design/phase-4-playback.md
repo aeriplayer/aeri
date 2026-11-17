@@ -27,17 +27,17 @@ Every step lands with its tests, and `prek run --all-files` plus `prek run --all
 - **ADR before code.** Steps 2, 4, 5, and 6 each need an ADR ([`adr/README.md`](../adr/README.md)): two new crates, a new thread, a new channel, and a changed public trait.
 - **One step per commit**, on the `phase-4` branch.
 
-## Decisions for the owner
+## Decisions
 
-These must be settled before the step that depends on them. Each has a recommendation; the steps below are written as if it were accepted.
+Agreed with the owner on 2026-11-16. The steps below build on them. Where a step says "ADR first", the ADR records the decision before the code is written.
 
-| | Decision | Recommendation | Blocks |
+| | Question | Decision | Applies in |
 | --- | --- | --- | --- |
-| D1 | The roadmap's `rubato` resampler "where PipeWire refuses a rate" | **Leave it out of Phase 4.** Neither sink ever refuses a rate: `CoreAudioSink` and `PipeWireSink` both report the requested spec as negotiated, because CoreAudio's output unit and the PipeWire server convert (ADR 0017, ADR 0019). A resampler built now would have no caller and no test that reaches it. Move the roadmap item to "Later", and correct the note "On the resampler being bypassed" in `ARCHITECTURE.md`, which still describes a macOS fallback that ADR 0017 removed. `rubato` stays the locked choice for when a caller exists. | Nothing, if accepted |
+| D1 | The roadmap's `rubato` resampler "where PipeWire refuses a rate" | **Leave it out of Phase 4.** Neither sink ever refuses a rate: `CoreAudioSink` and `PipeWireSink` both report the requested spec as negotiated, because CoreAudio's output unit and the PipeWire server convert (ADR 0017, ADR 0019). A resampler built now would have no caller and no test that reaches it. The roadmap lists it under "Later". `rubato` stays the locked choice for when a caller exists. | No step |
 | D2 | DSP buffer layout (an open decision in `ARCHITECTURE.md`) | **Interleaved.** The decoder and the sink are interleaved on both sides, and the two nodes of this phase are per-sample gains that do not care. Planar would cost two conversions per block to benefit no node that exists. A node that wants planar (an FFT equaliser) can convert inside itself. | Step 2 |
 | D3 | Where ReplayGain values come from, with no tag reader until Phase 5 | **The decoder reports them.** symphonia already parses the tags when it probes a file, so `Decoder` gains one method and no dependency is added. This changes a public trait that crosses a crate boundary. The alternative, adding `lofty` a phase early, brings the tag-mapping question of ADR 0009 forward with it. | Step 4 |
 | D4 | New dependencies | `fastrand` in `aeri-player`, for shuffle: seedable, no dependencies of its own, and shuffle needs no cryptographic quality. `crossterm` in `aeri-cli`, for raw-mode key input. A benchmark harness in `aeri-dsp` as a dev-dependency (D5). | Steps 3, 6, 9 |
-| D5 | Benchmarks in CI under CodSpeed ([`TESTING.md`](../TESTING.md) › Not yet in place) | New tooling, a CI job, and a CodSpeed account linked to the GitHub repository. Raise it on reaching Step 3; until it is agreed the benchmarks run locally only. | The CI half of Step 3 |
+| D5 | Benchmarks in CI under CodSpeed ([`TESTING.md`](../TESTING.md) › Not yet in place) | Agreed: a benchmark harness, a CI job, and CodSpeed. Linking a CodSpeed account to the GitHub repository is the owner's to do; ask on reaching Step 3, and until it is linked the benchmarks run locally only. | The CI half of Step 3 |
 | D6 | Behaviour this brief chooses | ReplayGain defaults to album mode and falls back to the track value when a file has no album value, and the reverse in track mode. After queued tracks, the order resumes from the entry that was playing before the queue. Shuffle plays every entry once per pass, then reshuffles. `previous` always goes to the previous entry and never restarts the current one. All are pinned by tests and cheap to change. | Steps 1, 6 |
 
 ## Step 1 — `aeri-core`: volume and ReplayGain types
@@ -146,7 +146,7 @@ Done when: `Chain` and `Registry` have unit tests using a test node, including a
 - **At a factor of exactly `1.0` a node leaves the block untouched.** Multiplying by `1.0` is exact, so this is not for correctness; it makes "unity volume, ReplayGain off" a path that provably does not write the samples, which the bit-perfect claims of ADR 0017 and ADR 0019 lean on.
 - `Registry::builtin()` order is ReplayGain, then volume.
 
-Benchmarks arrive here ([`TESTING.md`](../TESTING.md)): one per node and one for the two-node chain, over a 1024-frame stereo block, built with the `profiling` profile. See D5 before adding the harness or a CI job.
+Benchmarks arrive here ([`TESTING.md`](../TESTING.md)): one per node and one for the two-node chain, over a 1024-frame stereo block, built with the `profiling` profile. The CI job waits for the owner to link CodSpeed (D5).
 
 Done when: unit tests pin the arithmetic; property tests show output never exceeds input magnitude at or below unity, and that a ramp is monotonic and ends on the target; the `process` bodies run under an allocation guard. The guard of ADR 0018 lives in `aeri-audio`, which `aeri-dsp` may not depend on, so say in the Step 2 ADR how `aeri-dsp` gets one. No mutant survives in `aeri-dsp`.
 
@@ -397,7 +397,7 @@ Stop and raise it with the owner, do not improvise, when:
 
 - a signature here cannot be made to compile without changing its *meaning*;
 - you want a dependency this brief does not name, or one it names fails `cargo deny`;
-- a decision in the table above has not been made and you have reached its step;
+- a decision in the table above looks wrong once real code exists;
 - an existing `Engine` method, `OutputSink`, or `Decoder` needs to change beyond what Steps 4 and 5 specify;
 - a decision recorded in an ADR looks wrong once real code exists;
 - a check fails and the only fix you can see is to weaken the check.
