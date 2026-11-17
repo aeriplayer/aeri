@@ -56,6 +56,7 @@ dependencies = [
 name = "aeri-dsp"
 version = "0.1.0"
 dependencies = [
+ "aeri-alloc-guard",
  "aeri-core",
  "proptest",
  "thiserror",
