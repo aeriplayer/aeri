@@ -4,16 +4,17 @@ use std::ffi::OsStr;
 use std::path::Path;
 use std::time::Duration;
 
-use aeri_core::{Channels, SampleRate, StreamSpec};
+use aeri_core::{Channels, ReplayGain, SampleRate, StreamSpec};
 use symphonia::core::audio::AudioSpec;
 use symphonia::core::codecs::audio::{AudioDecoder, AudioDecoderOptions};
 use symphonia::core::errors::{Error as SymphoniaError, SeekErrorKind};
 use symphonia::core::formats::probe::Hint;
 use symphonia::core::formats::{FormatOptions, FormatReader, SeekMode, SeekTo, TrackType};
 use symphonia::core::io::{MediaSource, MediaSourceStream, MediaSourceStreamOptions};
-use symphonia::core::meta::MetadataOptions;
+use symphonia::core::meta::{MetadataOptions, MetadataRevision, StandardTag, Tag};
 use symphonia::core::units::{Time, TimeBase, Timestamp};
 
+use crate::replay_gain::{parse_gain, parse_peak};
 use crate::{DecodeError, Decoder};
 
 /// A FLAC or MP3 track, demuxed and decoded by symphonia.
@@ -24,6 +25,7 @@ pub(crate) struct SymphoniaDecoder {
     spec: StreamSpec,
     duration: Option<Duration>,
     time_base: Option<TimeBase>,
+    replay_gain: ReplayGain,
     block: Vec<f32>,
 }
 
@@ -44,7 +46,7 @@ impl SymphoniaDecoder {
 
     fn from_media_source(source: Box<dyn MediaSource>, hint: &Hint) -> Result<Self, DecodeError> {
         let stream = MediaSourceStream::new(source, MediaSourceStreamOptions::default());
-        let reader = symphonia::default::get_probe()
+        let mut reader = symphonia::default::get_probe()
             .probe(
                 hint,
                 stream,
@@ -81,6 +83,13 @@ impl SymphoniaDecoder {
             .num_frames
             .map(|frames| sample_rate.duration_of(frames));
 
+        let replay_gain = reader
+            .metadata()
+            .current()
+            .map_or_else(ReplayGain::default, |revision| {
+                replay_gain_of(revision, u64::from(track_id))
+            });
+
         Ok(Self {
             reader,
             decoder,
@@ -91,6 +100,7 @@ impl SymphoniaDecoder {
             },
             duration,
             time_base,
+            replay_gain,
             block: Vec::new(),
         })
     }
@@ -118,6 +128,10 @@ impl Decoder for SymphoniaDecoder {
 
     fn duration(&self) -> Option<Duration> {
         self.duration
+    }
+
+    fn replay_gain(&self) -> ReplayGain {
+        self.replay_gain
     }
 
     fn next_block(&mut self) -> Result<Option<&[f32]>, DecodeError> {
@@ -169,6 +183,44 @@ impl Decoder for SymphoniaDecoder {
     }
 }
 
+/// The track's own tags win over the media-level ones; within each, the first tag wins.
+fn replay_gain_of(revision: &MetadataRevision, track_id: u64) -> ReplayGain {
+    let own = revision
+        .per_track
+        .iter()
+        .filter(|per_track| per_track.track_id == track_id)
+        .flat_map(|per_track| &per_track.metadata.tags);
+    let mut found = ReplayGain::default();
+    for Tag { std, .. } in own.chain(&revision.media.tags) {
+        match std {
+            Some(StandardTag::ReplayGainTrackGain(text)) => {
+                keep(&mut found.track_gain_db, text, parse_gain);
+            }
+            Some(StandardTag::ReplayGainTrackPeak(text)) => {
+                keep(&mut found.track_peak, text, parse_peak);
+            }
+            Some(StandardTag::ReplayGainAlbumGain(text)) => {
+                keep(&mut found.album_gain_db, text, parse_gain);
+            }
+            Some(StandardTag::ReplayGainAlbumPeak(text)) => {
+                keep(&mut found.album_peak, text, parse_peak);
+            }
+            _ => {}
+        }
+    }
+    found
+}
+
+fn keep(slot: &mut Option<f32>, text: &str, parse: fn(&str) -> Option<f32>) {
+    if slot.is_some() {
+        return;
+    }
+    *slot = parse(text);
+    if slot.is_none() {
+        tracing::warn!(value = %text, "ignoring a ReplayGain value that does not parse");
+    }
+}
+
 fn has_spec(audio: &AudioSpec, spec: StreamSpec) -> bool {
     audio.rate() == spec.sample_rate.get()
         && audio.channels().count() == usize::from(spec.channels.get())
@@ -207,7 +259,119 @@ fn seek_reason(kind: &SeekErrorKind) -> &'static str {
 mod tests {
     use std::io;
 
+    use symphonia::core::meta::{
+        METADATA_ID_NULL, MetadataBuilder, MetadataInfo, PerTrackMetadataBuilder, RawTag,
+    };
+
     use super::*;
+
+    fn info() -> MetadataInfo {
+        MetadataInfo {
+            metadata: METADATA_ID_NULL,
+            short_name: "test",
+            long_name: "test",
+        }
+    }
+
+    fn tag(std: StandardTag) -> Tag {
+        Tag::new_std(RawTag::new("key", "value"), std)
+    }
+
+    #[expect(
+        clippy::rc_buffer,
+        reason = "symphonia's `StandardTag` holds an `Arc<String>`"
+    )]
+    fn text(value: &str) -> std::sync::Arc<String> {
+        std::sync::Arc::new(value.to_owned())
+    }
+
+    #[test]
+    fn all_four_values_are_read_from_media_tags() {
+        let mut builder = MetadataBuilder::new(info());
+        builder
+            .add_tag(tag(StandardTag::ReplayGainTrackGain(text("-6.5 dB"))))
+            .add_tag(tag(StandardTag::ReplayGainTrackPeak(text("0.9"))))
+            .add_tag(tag(StandardTag::ReplayGainAlbumGain(text("-3 dB"))))
+            .add_tag(tag(StandardTag::ReplayGainAlbumPeak(text("1.1"))));
+
+        assert_eq!(
+            replay_gain_of(&builder.build(), 0),
+            ReplayGain {
+                track_gain_db: Some(-6.5),
+                track_peak: Some(0.9),
+                album_gain_db: Some(-3.0),
+                album_peak: Some(1.1),
+            }
+        );
+    }
+
+    #[test]
+    fn other_tags_and_an_empty_revision_give_nothing() {
+        let mut builder = MetadataBuilder::new(info());
+        builder
+            .add_tag(Tag::new(RawTag::new("TITLE", "song")))
+            .add_tag(tag(StandardTag::ReplayGainTrackRange(text("5 dB"))));
+
+        assert_eq!(replay_gain_of(&builder.build(), 0), ReplayGain::default());
+        assert_eq!(
+            replay_gain_of(&MetadataBuilder::new(info()).build(), 0),
+            ReplayGain::default()
+        );
+    }
+
+    #[test]
+    fn a_value_that_does_not_parse_is_left_out_and_the_rest_are_kept() {
+        let mut builder = MetadataBuilder::new(info());
+        builder
+            .add_tag(tag(StandardTag::ReplayGainTrackGain(text("loud"))))
+            .add_tag(tag(StandardTag::ReplayGainTrackPeak(text("-1"))))
+            .add_tag(tag(StandardTag::ReplayGainAlbumGain(text("-3 dB"))));
+
+        assert_eq!(
+            replay_gain_of(&builder.build(), 0),
+            ReplayGain {
+                album_gain_db: Some(-3.0),
+                ..ReplayGain::default()
+            }
+        );
+    }
+
+    #[test]
+    fn the_tracks_own_tags_win_over_media_tags_and_the_first_tag_wins() {
+        let mut own = PerTrackMetadataBuilder::new(7);
+        own.add_tag(tag(StandardTag::ReplayGainTrackGain(text("-1 dB"))))
+            .add_tag(tag(StandardTag::ReplayGainTrackGain(text("-2 dB"))));
+        let mut other = PerTrackMetadataBuilder::new(8);
+        other.add_tag(tag(StandardTag::ReplayGainAlbumGain(text("-9 dB"))));
+        let mut builder = MetadataBuilder::new(info());
+        builder
+            .add_tag(tag(StandardTag::ReplayGainTrackGain(text("-5 dB"))))
+            .add_tag(tag(StandardTag::ReplayGainTrackPeak(text("0.5"))))
+            .add_track(other.build())
+            .add_track(own.build());
+
+        assert_eq!(
+            replay_gain_of(&builder.build(), 7),
+            ReplayGain {
+                track_gain_db: Some(-1.0),
+                track_peak: Some(0.5),
+                ..ReplayGain::default()
+            }
+        );
+    }
+
+    #[test]
+    fn a_later_duplicate_fills_in_after_an_earlier_one_that_did_not_parse() {
+        let mut builder = MetadataBuilder::new(info());
+        builder
+            .add_tag(tag(StandardTag::ReplayGainTrackGain(text("loud"))))
+            .add_tag(tag(StandardTag::ReplayGainTrackGain(text("-4 dB"))));
+
+        assert_eq!(
+            replay_gain_of(&builder.build(), 0).track_gain_db,
+            Some(-4.0)
+        );
+    }
 
     #[test]
     fn io_errors_stay_io_errors() {

@@ -47,6 +47,7 @@ version = "0.1.0"
 dependencies = [
  "aeri-core",
  "fs-err",
+ "proptest",
  "symphonia",
  "thiserror",
  "tracing",
