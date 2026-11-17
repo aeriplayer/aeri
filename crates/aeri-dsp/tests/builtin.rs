@@ -209,7 +209,6 @@ mod tests {
 
     proptest! {
         #[test]
-        #[cfg_attr(miri, ignore = "proptest reads its regression file, which Miri's isolation forbids")]
         fn volume_never_raises_a_sample(
             db in -90.0_f32..=0.0,
             width in 1_u16..=4,
@@ -224,27 +223,26 @@ mod tests {
         }
 
         #[test]
-        #[cfg_attr(miri, ignore = "proptest reads its regression file, which Miri's isolation forbids")]
         fn a_ramp_is_monotonic_and_ends_on_the_target(
             start_db in -90.0_f32..=0.0,
             end_db in -90.0_f32..=0.0,
             frames in 1_usize..2000,
         ) {
+            let (start, end) = (Volume::from_db(start_db), Volume::from_db(end_db));
             let mut chain = chain(&[VOLUME], 1, ReplayGain::default());
-            chain.control(&volume(start_db));
+            chain.control(&Control::Volume(start));
             let _ = run(&mut chain, 1, &[1.0]);
-            chain.control(&volume(end_db));
+            chain.control(&Control::Volume(end));
             let out = run(&mut chain, 1, &vec![1.0; frames]);
-            let rising = Volume::from_db(end_db) >= Volume::from_db(start_db);
+            let rising = end >= start;
             for pair in out.windows(2) {
                 let ordered = if rising { pair[1] >= pair[0] } else { pair[1] <= pair[0] };
                 prop_assert!(ordered);
             }
-            prop_assert_eq!(out[frames - 1].to_bits(), Volume::from_db(end_db).linear().to_bits());
+            prop_assert_eq!(out[frames - 1].to_bits(), end.linear().to_bits());
         }
 
         #[test]
-        #[cfg_attr(miri, ignore = "proptest reads its regression file, which Miri's isolation forbids")]
         fn an_attenuating_replaygain_never_raises_a_sample(
             db in -60.0_f32..=0.0,
             block in prop::collection::vec(-1.0_f32..=1.0, 0..3000),
