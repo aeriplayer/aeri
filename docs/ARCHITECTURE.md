@@ -34,7 +34,7 @@ aeri-core       domain types; no workspace dependencies
 aeri-script     title formatting + queries                  planned · scripting
 aeri-audio      OutputSink + CoreAudio / PipeWire sinks + the real-time thread
 aeri-decode     Decoder over symphonia
-aeri-dsp        DspNode + chain                             planned · playback
+aeri-dsp        DspNode + chain + registry
     ↑
 aeri-engine     audio engine: decode → DSP → sink, current track + next slot
 aeri-library    SQLite, scanning, tags, in-memory store     planned · library
@@ -47,7 +47,7 @@ aeri-gui        binary: GPUI shell, widget registry         planned · GUI
 aeri-cli        binary: `aeri`
 ```
 
-**A crate is created in the phase that first needs it.** A stub crate still costs compile time, lockfile entries, and dependency upkeep, and its boundary hardens before any code has tested it. Five crates exist: `aeri-core`, `aeri-audio`, `aeri-decode`, `aeri-engine`, `aeri-cli`.
+**A crate is created in the phase that first needs it.** A stub crate still costs compile time, lockfile entries, and dependency upkeep, and its boundary hardens before any code has tested it. Six crates exist: `aeri-core`, `aeri-audio`, `aeri-decode`, `aeri-dsp`, `aeri-engine`, `aeri-cli`.
 
 The split below the engine was drawn before any audio flowed and is provisional: expect the first-audio phase to reshape it, and do not contort code to preserve it.
 

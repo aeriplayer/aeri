@@ -48,6 +48,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "aeri-dsp"
+version = "0.1.0"
+dependencies = [
+ "aeri-core",
+ "proptest",
+ "thiserror",
+]
+
+[[package]]
 name = "aeri-engine"
 version = "0.1.0"
 dependencies = [
