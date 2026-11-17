@@ -39,6 +39,7 @@ The `# frozen: vX` and `# vX` markers beside SHAs are data: Renovate reads them 
 - **Retries.** `CARGO_NET_RETRY` and `RUSTUP_MAX_RETRIES` absorb transient registry and toolchain download failures.
 - **Cache.** `Swatinem/rust-cache` keeps the registry and compiled dependencies per job kind. Only runs on `main` write it, so a pull request can read the cache but cannot poison it.
 - **Concurrency.** A new push cancels the older run for the same pull request. A re-run of an older commit gets its own group, so it cannot cancel the latest one.
+- **Benchmarks.** The `benchmarks` job builds `aeri-dsp`'s `divan` benchmarks with the `profiling` profile and runs them under [CodSpeed](https://codspeed.io)'s simulation mode, which counts CPU instructions, so results are stable on shared runners where wall-clock timings are noise. It reports on the pull request through CodSpeed's GitHub app. The repository is public, so CodSpeed authenticates the job with GitHub's OIDC token (`id-token: write`, on this job only) and no secret is stored. The harness is `codspeed-divan-compat`, a dev-dependency of `aeri-dsp` renamed to `divan`; `codspeed`, `codspeed-divan-compat` and `nix` have build scripts, which `deny.toml` names after they were read.
 - **Release plan.** When the release inputs change (`dist-workspace.toml`, `release.yml`, manifests, the lockfile, the toolchain), `dist plan` runs, so a broken release configuration fails on the pull request rather than on the first tag.
 
 ### Deliberate gaps

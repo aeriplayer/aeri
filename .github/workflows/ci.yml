@@ -157,6 +157,33 @@ jobs:
       - name: cargo llvm-cov
         run: prek run coverage --all-files --stage manual
 
+  benchmarks:
+    name: benchmarks
+    needs: plan
+    if: needs.plan.outputs.code == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      id-token: write # CodSpeed authenticates a public repository with an OIDC token
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: $/.github/actions/setup
+        with:
+          tools: "cargo-codspeed"
+          cache-key: benchmarks
+
+      - name: Build the benchmarks
+        run: cargo codspeed build --profile profiling -p aeri-dsp
+
+      - uses: CodSpeedHQ/action@af75f77f17a054769abefaa42fe8dc2975469b5f # v5.6.3
+        with:
+          mode: simulation
+          run: cargo codspeed run -p aeri-dsp
+
   mutants:
     name: mutants
     needs: plan

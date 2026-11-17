@@ -18,4 +18,9 @@ thiserror.workspace = true
 
 [dev-dependencies]
 aeri-alloc-guard.workspace = true
+divan.workspace            = true
 proptest.workspace         = true
+
+[[bench]]
+name    = "nodes"
+harness = false

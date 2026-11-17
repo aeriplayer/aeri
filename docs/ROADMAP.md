@@ -64,7 +64,7 @@ Specified step by step in [`design/phase-4-playback.md`](design/phase-4-playback
 - [ ] The queue; stop after current
 - [ ] The engine's "took the next track" event, and the player refilling the slot
 - [x] Create `aeri-dsp`: `DspNode`, the chain, a registry ([ADR 0002](adr/0002-compiled-in-extension-points.md))
-- [ ] Volume and ReplayGain nodes
+- [x] Volume and ReplayGain nodes
 - [ ] `aeri-cli`: `play <paths…>`, directories, M3U files; interactive transport keys
 - [ ] Gapless verified end to end across a playlist
 
