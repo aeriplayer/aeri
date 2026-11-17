@@ -5,11 +5,11 @@ mod tests {
     use std::path::PathBuf;
     use std::time::Duration;
 
-    use aeri_core::{Channels, SampleRate, Source, StreamSpec};
+    use aeri_core::{Channels, ReplayGain, SampleRate, Source, StreamSpec};
     use aeri_decode::{DecodeError, Decoder};
 
     const FRAMES: u64 = 44_100;
-    /// One MPEG-1 Layer III frame: the most an MP3 decoder may be off by without gapless info.
+    /// One MPEG-1 Layer III frame: how far a seek may land from its target.
     const MP3_FRAME: u64 = 1_152;
     /// The fixtures peak near 0.088 (see their README); silence and denormals sit far below.
     const AUDIBLE: f32 = 0.05;
@@ -63,15 +63,13 @@ mod tests {
 
     #[test]
     #[cfg_attr(miri, ignore = "opens files, which Miri's isolation forbids")]
-    fn mp3_decodes_within_one_frame_of_the_source_length() {
+    fn mp3_decodes_exactly_the_source_length_because_encoder_delay_is_trimmed() {
         let mut decoder = open("sine.mp3");
 
         assert_eq!(decoder.spec(), stereo_44k());
+        assert_eq!(decoder.duration(), Some(Duration::from_secs(1)));
         let (frames, peak) = drain(decoder.as_mut());
-        assert!(
-            frames.abs_diff(FRAMES) <= MP3_FRAME,
-            "decoded {frames} frames"
-        );
+        assert_eq!(frames, FRAMES);
         assert!(peak > AUDIBLE, "peak {peak} is near silence");
     }
 
@@ -116,5 +114,78 @@ mod tests {
             matches!(error, Some(DecodeError::Unsupported(_))),
             "{error:?}"
         );
+    }
+
+    fn tagged() -> ReplayGain {
+        ReplayGain {
+            track_gain_db: Some(-6.54),
+            track_peak: Some(0.088),
+            album_gain_db: Some(-3.21),
+            album_peak: Some(0.5),
+        }
+    }
+
+    #[test]
+    #[cfg_attr(miri, ignore = "opens files, which Miri's isolation forbids")]
+    fn flac_reports_the_replaygain_in_its_vorbis_comments() {
+        assert_eq!(open("sine-rg.flac").replay_gain(), tagged());
+    }
+
+    #[test]
+    #[cfg_attr(miri, ignore = "opens files, which Miri's isolation forbids")]
+    fn mp3_reports_the_replaygain_in_its_id3v2_tag() {
+        assert_eq!(open("sine-rg.mp3").replay_gain(), tagged());
+    }
+
+    #[test]
+    #[cfg_attr(miri, ignore = "opens files, which Miri's isolation forbids")]
+    fn files_without_the_tags_report_none() {
+        for name in ["sine.flac", "sine.mp3", "sine-48k.flac"] {
+            assert_eq!(open(name).replay_gain(), ReplayGain::default(), "{name}");
+        }
+    }
+
+    #[test]
+    #[cfg_attr(miri, ignore = "opens files, which Miri's isolation forbids")]
+    fn a_file_with_malformed_values_still_plays_and_keeps_the_good_one() {
+        let mut decoder = open("sine-rg-bad.flac");
+
+        assert_eq!(
+            decoder.replay_gain(),
+            ReplayGain {
+                track_gain_db: Some(-6.54),
+                ..ReplayGain::default()
+            }
+        );
+        let (frames, _) = drain(decoder.as_mut());
+        assert_eq!(frames, FRAMES);
+    }
+
+    #[test]
+    #[cfg_attr(miri, ignore = "opens files, which Miri's isolation forbids")]
+    fn tags_do_not_change_what_decodes() {
+        for (plain, tagged) in [("sine.flac", "sine-rg.flac"), ("sine.mp3", "sine-rg.mp3")] {
+            let (plain_frames, plain_peak) = drain(open(plain).as_mut());
+            let (tagged_frames, tagged_peak) = drain(open(tagged).as_mut());
+            assert_eq!(plain_frames, tagged_frames, "{tagged}");
+            assert_eq!(plain_peak.to_bits(), tagged_peak.to_bits(), "{tagged}");
+        }
+    }
+
+    #[test]
+    #[cfg_attr(miri, ignore = "checks files exist, which Miri's isolation forbids")]
+    fn every_extension_is_lowercase_and_has_a_fixture() {
+        for extension in aeri_decode::EXTENSIONS {
+            assert_eq!(*extension, extension.to_lowercase());
+            assert!(!extension.starts_with('.'));
+            let name = format!("sine.{extension}");
+            assert!(
+                PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                    .join("tests/fixtures")
+                    .join(name)
+                    .exists(),
+                "no fixture for {extension}"
+            );
+        }
     }
 }

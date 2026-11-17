@@ -4,15 +4,19 @@
 //! symphonia type appears in this crate's API. The supported formats are FLAC and MP3.
 
 mod error;
+mod replay_gain;
 mod symphonia_decoder;
 
 use std::time::Duration;
 
-use aeri_core::{Source, StreamSpec};
+use aeri_core::{ReplayGain, Source, StreamSpec};
 
 pub use error::DecodeError;
 
 use crate::symphonia_decoder::SymphoniaDecoder;
+
+/// The file extensions [`open`] can handle, lowercase and without the dot.
+pub const EXTENSIONS: &[&str] = &["flac", "mp3"];
 
 /// A decoder for one track, producing interleaved `f32` blocks.
 pub trait Decoder: Send {
@@ -21,6 +25,11 @@ pub trait Decoder: Send {
 
     /// The length of the track, when the container states it.
     fn duration(&self) -> Option<Duration>;
+
+    /// The `ReplayGain` values the file's tags carry, read when it was opened.
+    ///
+    /// A tag that does not parse is left out, so every field may be `None`.
+    fn replay_gain(&self) -> ReplayGain;
 
     /// Decodes the next block and lends it out as interleaved `f32`.
     /// `Ok(None)` is a clean end of stream. A returned block is never empty and holds
