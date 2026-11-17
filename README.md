@@ -58,7 +58,7 @@ With input piped in, there are no keys and `aeri` plays through and exits.
 
 ## Status
 
-Phase 3, first audio, is complete: decoding, the playback engine, and native output on both platforms. Phase 4 is in progress: playlists, a queue, playback order, volume and ReplayGain work through the player, and the command line takes paths, directories and M3U playlists. Listening checks on both platforms remain. See the [roadmap](docs/ROADMAP.md).
+Phase 3, first audio, is complete: decoding, the playback engine, and native output on both platforms. Phase 4 is in progress: playlists, a queue, playback order, volume and ReplayGain work through the player, and the command line takes paths, directories and M3U playlists. The owner's listening checks (gapless FLAC and MP3, sample-rate changes, volume, ReplayGain, skipping and seeking, an unplayable file) passed on macOS on 2026-11-17. The Linux listening check is still owed. See the [roadmap](docs/ROADMAP.md).
 
 ## Building from source
 

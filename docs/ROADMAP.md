@@ -67,6 +67,8 @@ Specified step by step in [`design/phase-4-playback.md`](design/phase-4-playback
 - [x] Volume and ReplayGain nodes
 - [x] `aeri-cli`: `play <paths…>`, directories, M3U files; interactive transport keys
 - [x] Gapless verified end to end across a playlist
+- [x] Verified by listening on macOS (2026-11-17): gapless FLAC and MP3, sample-rate changes, volume on a held key, ReplayGain, rapid skip, seek and pause, an unplayable file
+- [ ] Verified by listening on Linux (PipeWire)
 
 ---
 
