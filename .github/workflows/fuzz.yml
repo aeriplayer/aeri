@@ -19,7 +19,7 @@ env:
 jobs:
   # ADR 0015. Pull requests get a 60-second run in ci.yml.
   decode:
-    name: fuzz decode
+    name: fuzz
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     permissions:
@@ -38,7 +38,7 @@ jobs:
         working-directory: fuzz
         run: rustup toolchain install # reads fuzz/rust-toolchain.toml
 
-      - name: Fuzz the decoder for 10 minutes
+      - name: Fuzz the decoder and the playlist parser for 10 minutes each
         env:
           FUZZ_SECONDS: "600"
         run: prek run fuzz --all-files --stage manual

@@ -9,7 +9,7 @@
 <!-- rumdl-enable MD033 MD041 -->
 
 > [!NOTE]
-> aeri is in early development. Today it plays one FLAC or MP3 file from the command line. Nothing has been released.
+> aeri is in early development. Today it plays FLAC and MP3 files, directories of them, and M3U playlists from the command line. Nothing has been released.
 
 ## What aeri is for
 
@@ -28,16 +28,23 @@ aeri supports Apple Silicon Macs, and Linux with PipeWire. No support for Window
 
 ```sh
 aeri play song.flac
+aeri play --order shuffle ~/Music/album-a ~/Music/mix.m3u song.flac
 ```
 
-plays one FLAC or MP3 file through the default output and shows its position until the track ends or you press Ctrl-C.
+plays every FLAC and MP3 file it is given, one after another and gaplessly where the files share a sample rate, through the default output, and shows the file name and position until the last one ends or you press Ctrl-C. A path can be a file, a directory (searched, subdirectories included, in path order), or an `.m3u` or `.m3u8` playlist. A file that cannot be played is reported on standard error and skipped.
+
+| Flag | Values |
+| --- | --- |
+| `--order` | `default`, `repeat-track`, `repeat-playlist`, `shuffle` |
+| `--volume` | decibels below full volume, such as `-6` |
+| `--replaygain` | `off`, `track`, `album` (the default) |
 
 - **On macOS** aeri switches the output device to the file's sample rate when the device offers it, so CoreAudio does not resample. It never takes the device for itself, so other apps keep playing.
 - **On Linux** aeri asks PipeWire for the file's sample rate. PipeWire resamples when the system's audio graph runs at another rate, which is common.
 
 ## Status
 
-Phase 3, first audio, is complete: decoding, the playback engine, and native output on both platforms. Phase 4 adds playlists, a queue, playback order, volume, and ReplayGain, still driven from the command line. See the [roadmap](docs/ROADMAP.md).
+Phase 3, first audio, is complete: decoding, the playback engine, and native output on both platforms. Phase 4 is in progress: playlists, a queue, playback order, volume and ReplayGain work through the player, and the command line takes paths, directories and M3U playlists. Interactive keys, and listening checks on both platforms, remain. See the [roadmap](docs/ROADMAP.md).
 
 ## Building from source
 

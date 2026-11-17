@@ -84,6 +84,7 @@ dependencies = [
  "aeri-core",
  "aeri-engine",
  "fastrand",
+ "fs-err",
  "proptest",
  "thiserror",
  "tokio",

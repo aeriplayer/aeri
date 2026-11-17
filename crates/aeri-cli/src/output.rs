@@ -4,7 +4,7 @@
 use std::io::{self, Write};
 use std::time::Duration;
 
-use aeri_core::{PlaybackState, Transport};
+use aeri_core::{PlaybackState, Source, Track, Transport};
 
 /// Rewrites the progress line in place.
 pub(crate) fn progress(out: &mut impl Write, state: &PlaybackState) -> io::Result<()> {
@@ -23,6 +23,19 @@ pub(crate) fn progress(out: &mut impl Write, state: &PlaybackState) -> io::Resul
         out.flush()?;
     }
     Ok(())
+}
+
+/// Names the file that has started playing, on a line of its own. Tracks carry no tags yet,
+/// so the name is the file's.
+pub(crate) fn now_playing(out: &mut impl Write, track: &Track) -> io::Result<()> {
+    let name = match &track.source {
+        Source::File(path) => path.file_name().map_or_else(
+            || path.display().to_string(),
+            |name| name.to_string_lossy().into_owned(),
+        ),
+        other => other.to_string(),
+    };
+    writeln!(out, "{name}")
 }
 
 /// Ends the progress line.
@@ -91,6 +104,33 @@ mod tests {
     #[test]
     fn progress_shows_nothing_when_stopped() {
         assert_eq!(shown(|out| progress(out, &PlaybackState::Stopped)), "");
+    }
+
+    fn file(path: &str) -> Track {
+        Track {
+            source: Source::File(PathBuf::from(path)),
+            duration: None,
+            title: None,
+            artist: None,
+            album: None,
+        }
+    }
+
+    #[test]
+    fn the_track_that_started_is_named_by_its_file_on_its_own_line() {
+        assert_eq!(
+            shown(|out| now_playing(out, &file("/music/album/01 song.flac"))),
+            "01 song.flac\n"
+        );
+        assert_eq!(
+            shown(|out| now_playing(out, &file("bare.mp3"))),
+            "bare.mp3\n"
+        );
+    }
+
+    #[test]
+    fn a_path_with_no_file_name_is_shown_whole() {
+        assert_eq!(shown(|out| now_playing(out, &file("/"))), "/\n");
     }
 
     #[test]
