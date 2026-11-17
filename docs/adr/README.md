@@ -74,3 +74,4 @@ verified. Include the condition under which this should be revisited.
 | [0019](0019-pipewire-stream-on-its-own-loop.md) | On Linux, a PipeWire stream runs on its own loop thread and requests the source rate |
 | [0020](0020-aeri-dsp-in-place-interleaved-chain.md) | `aeri-dsp` holds an interleaved, in-place chain of compiled-in nodes |
 | [0021](0021-shared-allocation-guard-crate.md) | The allocation guard lives in a shared, test-only crate |
+| [0022](0022-decoder-reports-replaygain.md) | The decoder reports ReplayGain, and lists the extensions it opens |

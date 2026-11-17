@@ -317,3 +317,4 @@ Resolve each before the crate that depends on it is written.
 | Linux output | A PipeWire stream on its own loop thread; the source rate is requested, never forced | [ADR 0019](adr/0019-pipewire-stream-on-its-own-loop.md) |
 | DSP chain | `aeri-dsp`: interleaved `f32`, in place, never changes the stream spec | [ADR 0020](adr/0020-aeri-dsp-in-place-interleaved-chain.md) |
 | Allocation guard | A shared, test-only crate used by `aeri-audio` and `aeri-dsp` | [ADR 0021](adr/0021-shared-allocation-guard-crate.md) |
+| ReplayGain source | The decoder reports it from the tags symphonia parsed | [ADR 0022](adr/0022-decoder-reports-replaygain.md) |
