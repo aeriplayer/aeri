@@ -72,3 +72,5 @@ verified. Include the condition under which this should be revisited.
 | [0017](0017-bit-perfect-without-hog-mode.md) | On macOS, aeri switches the device rate but never takes it exclusively |
 | [0018](0018-real-time-verification.md) | The callback is verified by an in-house allocation guard and a loom model |
 | [0019](0019-pipewire-stream-on-its-own-loop.md) | On Linux, a PipeWire stream runs on its own loop thread and requests the source rate |
+| [0020](0020-aeri-dsp-in-place-interleaved-chain.md) | `aeri-dsp` holds an interleaved, in-place chain of compiled-in nodes |
+| [0021](0021-shared-allocation-guard-crate.md) | The allocation guard lives in a shared, test-only crate |

@@ -1,6 +1,6 @@
 # ADR 0018 — The callback is verified by an in-house allocation guard and a loom model
 
-- **Status:** Accepted
+- **Status:** Accepted; the allocation guard's location is superseded by [ADR 0021](0021-shared-allocation-guard-crate.md)
 - **Date:** 2026-11-16
 
 ## Context
