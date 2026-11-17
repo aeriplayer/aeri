@@ -12,16 +12,7 @@ use crate::ids::{EntryId, PlaylistId};
 use crate::sequence::PlaybackOrder;
 
 fn track(file: &str, title: &str) -> Arc<Track> {
-    let path: PathBuf = [
-        env!("CARGO_MANIFEST_DIR"),
-        "..",
-        "aeri-decode",
-        "tests",
-        "fixtures",
-        file,
-    ]
-    .iter()
-    .collect();
+    let path = PathBuf::from(file);
     Arc::new(Track {
         source: Source::File(path),
         duration: None,
@@ -67,7 +58,8 @@ fn harness(files: &[&str]) -> Harness {
     let observer = sink.observer();
     observer.hold();
     let (inbox, receiver) = mpsc::unbounded_channel();
-    let engine = Engine::spawn(Box::new(sink), inbox).expect("the engine starts");
+    let engine = Engine::spawn_with(Box::new(sink), inbox, Box::new(aeri_engine::fake_open))
+        .expect("the engine starts");
     let mut sequence = Sequence::new(1);
     let list = sequence.create_playlist("list".to_owned());
     let tracks = files
@@ -108,7 +100,6 @@ fn stranger() -> Arc<Track> {
 // ---- is_active and refill ----
 
 #[test]
-#[cfg_attr(miri, ignore = "decodes files, which Miri's isolation forbids")]
 fn a_stopped_player_is_not_active_and_does_not_fill_the_slot() {
     let mut harness = harness(&["sine.flac", "sine.flac"]);
 
@@ -121,7 +112,6 @@ fn a_stopped_player_is_not_active_and_does_not_fill_the_slot() {
 }
 
 #[test]
-#[cfg_attr(miri, ignore = "decodes files, which Miri's isolation forbids")]
 fn a_player_is_active_when_something_plays_or_has_been_taken() {
     let mut harness = harness(&["sine.flac", "sine.flac"]);
     let offer = |position| Offer {
@@ -138,7 +128,6 @@ fn a_player_is_active_when_something_plays_or_has_been_taken() {
 }
 
 #[test]
-#[cfg_attr(miri, ignore = "decodes files, which Miri's isolation forbids")]
 fn starting_a_track_offers_the_next_one_and_refilling_again_offers_nothing_new() {
     let mut harness = harness(&["sine.flac", "sine.flac", "sine.flac"]);
 
@@ -151,7 +140,6 @@ fn starting_a_track_offers_the_next_one_and_refilling_again_offers_nothing_new()
 }
 
 #[test]
-#[cfg_attr(miri, ignore = "decodes files, which Miri's isolation forbids")]
 fn a_changed_answer_is_offered_and_clearing_it_empties_the_slot() {
     let mut harness = harness(&["sine.flac", "sine.flac", "sine.flac"]);
     harness.play();
@@ -175,7 +163,6 @@ fn a_changed_answer_is_offered_and_clearing_it_empties_the_slot() {
 }
 
 #[test]
-#[cfg_attr(miri, ignore = "decodes files, which Miri's isolation forbids")]
 fn unreported_offers_are_kept_up_to_a_limit_and_the_oldest_go_first() {
     let mut harness = harness(&["sine.flac", "sine.flac", "sine.flac"]);
     harness.play();
@@ -197,7 +184,6 @@ fn unreported_offers_are_kept_up_to_a_limit_and_the_oldest_go_first() {
 // ---- events ----
 
 #[test]
-#[cfg_attr(miri, ignore = "decodes files, which Miri's isolation forbids")]
 fn taking_a_slot_moves_the_sequence_and_a_stranger_is_ignored() {
     let mut harness = harness(&["sine.flac", "sine.flac", "sine.flac"]);
     harness.play();
@@ -215,7 +201,6 @@ fn taking_a_slot_moves_the_sequence_and_a_stranger_is_ignored() {
 }
 
 #[test]
-#[cfg_attr(miri, ignore = "decodes files, which Miri's isolation forbids")]
 fn hearing_a_taken_track_makes_it_the_current_one_and_clears_the_failure_count() {
     let mut harness = harness(&["sine.flac", "sine.flac", "sine.flac"]);
     harness.play();
@@ -242,7 +227,6 @@ fn hearing_a_taken_track_makes_it_the_current_one_and_clears_the_failure_count()
 }
 
 #[test]
-#[cfg_attr(miri, ignore = "decodes files, which Miri's isolation forbids")]
 fn a_slot_that_failed_to_open_is_passed_over_counted_and_replaced_by_the_next() {
     let mut harness = harness(&["sine.flac", "missing.flac", "sine.flac"]);
     harness.play();
@@ -257,7 +241,6 @@ fn a_slot_that_failed_to_open_is_passed_over_counted_and_replaced_by_the_next() 
 }
 
 #[test]
-#[cfg_attr(miri, ignore = "decodes files, which Miri's isolation forbids")]
 fn a_failure_while_decoding_a_track_being_heard_or_taken_is_counted() {
     let mut harness = harness(&["sine.flac", "sine.flac", "sine.flac"]);
     harness.play();
@@ -274,7 +257,6 @@ fn a_failure_while_decoding_a_track_being_heard_or_taken_is_counted() {
 }
 
 #[test]
-#[cfg_attr(miri, ignore = "decodes files, which Miri's isolation forbids")]
 fn a_failure_event_about_a_track_it_does_not_know_is_ignored() {
     let mut harness = harness(&["sine.flac", "sine.flac"]);
     harness.play();
@@ -288,7 +270,6 @@ fn a_failure_event_about_a_track_it_does_not_know_is_ignored() {
 // ---- the end of playback ----
 
 #[test]
-#[cfg_attr(miri, ignore = "decodes files, which Miri's isolation forbids")]
 fn an_end_event_with_nothing_playing_is_ignored_even_if_the_sequence_has_a_next() {
     let mut harness = harness(&["sine.flac", "sine.flac"]);
     let before = harness.calls();
@@ -300,7 +281,6 @@ fn an_end_event_with_nothing_playing_is_ignored_even_if_the_sequence_has_a_next(
 }
 
 #[test]
-#[cfg_attr(miri, ignore = "decodes files, which Miri's isolation forbids")]
 fn an_end_event_while_the_engine_is_playing_is_stale_and_ignored() {
     let mut harness = harness(&["sine.flac", "sine.flac"]);
     harness.play();
@@ -315,7 +295,6 @@ fn an_end_event_while_the_engine_is_playing_is_stale_and_ignored() {
 }
 
 #[test]
-#[cfg_attr(miri, ignore = "decodes files, which Miri's isolation forbids")]
 fn when_playback_ended_and_the_sequence_has_a_next_it_is_started() {
     let mut harness = harness(&["sine.flac", "sine.flac"]);
     harness.play();
@@ -330,7 +309,6 @@ fn when_playback_ended_and_the_sequence_has_a_next_it_is_started() {
 }
 
 #[test]
-#[cfg_attr(miri, ignore = "decodes files, which Miri's isolation forbids")]
 fn when_playback_ended_with_stop_after_current_it_stays_stopped_and_the_flag_clears() {
     let mut harness = harness(&["sine.flac", "sine.flac"]);
     harness.play();
@@ -348,7 +326,6 @@ fn when_playback_ended_with_stop_after_current_it_stays_stopped_and_the_flag_cle
 // ---- starting a track ----
 
 #[test]
-#[cfg_attr(miri, ignore = "decodes files, which Miri's isolation forbids")]
 fn a_jump_does_not_consume_the_queue_but_an_ordinary_start_does() {
     let mut harness = harness(&["sine.flac", "sine.flac"]);
     harness
@@ -364,7 +341,6 @@ fn a_jump_does_not_consume_the_queue_but_an_ordinary_start_does() {
 }
 
 #[test]
-#[cfg_attr(miri, ignore = "decodes files, which Miri's isolation forbids")]
 fn starting_a_track_that_is_gone_is_an_error() {
     let mut harness = harness(&["sine.flac"]);
     let gone = harness.at(0);
@@ -408,7 +384,6 @@ fn an_error_without_a_cause_is_just_its_message() {
 }
 
 #[test]
-#[cfg_attr(miri, ignore = "decodes files, which Miri's isolation forbids")]
 fn once_as_many_slots_have_failed_as_the_playlist_has_entries_the_slot_is_left_empty() {
     let mut harness = harness(&["sine.flac", "missing.flac"]);
     harness

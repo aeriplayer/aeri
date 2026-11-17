@@ -58,14 +58,18 @@ impl Player {
         Self::start(Engine::with_default_output, RandomState::new().hash_one(()))
     }
 
-    /// Starts a player over an in-memory sink, with a given shuffle seed, for tests.
+    /// Starts a player over an in-memory sink and in-memory decoders (ADR 0029), with a given
+    /// shuffle seed, for tests. Tracks are the fixture names `aeri_engine::fake_open` knows.
     ///
     /// # Errors
     ///
     /// As for [`with_default_output`](Self::with_default_output).
     #[cfg(feature = "test-util")]
     pub fn with_fake_sink(sink: aeri_engine::FakeSink, seed: u64) -> Result<Self, PlayerError> {
-        Self::start(|events| Engine::spawn(Box::new(sink), events), seed)
+        Self::start(
+            |events| Engine::spawn_with(Box::new(sink), events, Box::new(aeri_engine::fake_open)),
+            seed,
+        )
     }
 
     fn start(

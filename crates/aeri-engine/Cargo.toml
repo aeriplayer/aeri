@@ -13,7 +13,7 @@ description            = "Playback engine: an actor that decodes a current track
 workspace = true
 
 [features]
-test-util = ["aeri-audio/test-util"]
+test-util = ["aeri-audio/test-util", "aeri-decode/test-util"]
 
 [dependencies]
 aeri-audio.workspace  = true
@@ -27,3 +27,7 @@ tracing.workspace     = true
 [dev-dependencies]
 aeri-audio = { workspace = true, features = ["test-util"] }
 tokio      = { workspace = true, features = ["macros", "rt", "time"] }
+
+[[test]]
+name              = "engine"
+required-features = ["test-util"]

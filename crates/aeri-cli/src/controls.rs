@@ -114,10 +114,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(
-        miri,
-        ignore = "Miri perturbs `powf` and `log10`, so the round trip is not exact"
-    )]
     fn a_step_that_lands_exactly_on_the_floor_is_still_a_sound() {
         assert!(
             db(Volume::from_db(-60.0)).to_bits() == (-60.0_f32).to_bits(),
@@ -221,16 +217,7 @@ mod tests {
         }
 
         fn song(name: &str) -> Arc<Track> {
-            let path: PathBuf = [
-                env!("CARGO_MANIFEST_DIR"),
-                "..",
-                "aeri-decode",
-                "tests",
-                "fixtures",
-                name,
-            ]
-            .iter()
-            .collect();
+            let path = PathBuf::from(name);
             Arc::new(Track {
                 source: Source::File(path),
                 duration: None,
@@ -265,7 +252,6 @@ mod tests {
         }
 
         #[tokio::test]
-        #[cfg_attr(miri, ignore = "decodes files, which Miri's isolation forbids")]
         async fn the_volume_keys_step_the_players_volume_down_and_up() {
             let rig = rig(1).await;
 
@@ -277,7 +263,6 @@ mod tests {
         }
 
         #[tokio::test]
-        #[cfg_attr(miri, ignore = "decodes files, which Miri's isolation forbids")]
         async fn the_order_key_cycles_the_players_order() {
             let rig = rig(1).await;
 
@@ -288,7 +273,6 @@ mod tests {
         }
 
         #[tokio::test]
-        #[cfg_attr(miri, ignore = "decodes files, which Miri's isolation forbids")]
         async fn the_stop_key_toggles_stop_after_current_on_and_off() {
             let rig = rig(1).await;
 
@@ -303,7 +287,6 @@ mod tests {
         }
 
         #[tokio::test]
-        #[cfg_attr(miri, ignore = "decodes files, which Miri's isolation forbids")]
         async fn the_space_key_pauses_and_resumes() {
             let mut rig = rig(1).await;
             rig.player.play().await.expect("plays");
@@ -317,7 +300,6 @@ mod tests {
         }
 
         #[tokio::test]
-        #[cfg_attr(miri, ignore = "decodes files, which Miri's isolation forbids")]
         async fn the_skip_keys_move_through_the_playlist() {
             let rig = rig(3).await;
             rig.player.play().await.expect("plays");
@@ -334,7 +316,6 @@ mod tests {
         }
 
         #[tokio::test]
-        #[cfg_attr(miri, ignore = "decodes files, which Miri's isolation forbids")]
         async fn the_arrow_keys_seek_forward_and_back_by_five_seconds() {
             let rig = rig(1).await;
             rig.player.play().await.expect("plays");
@@ -346,7 +327,6 @@ mod tests {
         }
 
         #[tokio::test]
-        #[cfg_attr(miri, ignore = "decodes files, which Miri's isolation forbids")]
         async fn quit_asks_nothing_of_the_player() {
             let rig = rig(1).await;
 

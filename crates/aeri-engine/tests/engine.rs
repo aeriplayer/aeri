@@ -30,16 +30,7 @@ mod tests {
     }
 
     fn track(file: &str, title: &str) -> Arc<Track> {
-        let path: PathBuf = [
-            env!("CARGO_MANIFEST_DIR"),
-            "..",
-            "aeri-decode",
-            "tests",
-            "fixtures",
-            file,
-        ]
-        .iter()
-        .collect();
+        let path = PathBuf::from(file);
         Arc::new(Track {
             source: Source::File(path),
             duration: None,
@@ -60,7 +51,8 @@ mod tests {
 
     fn engine(sink: FakeSink) -> (Engine, watch::Receiver<PlaybackState>, Events) {
         let (events, received) = mpsc::unbounded_channel();
-        let engine = Engine::spawn(Box::new(sink), events).expect("the playback thread starts");
+        let engine = Engine::spawn_with(Box::new(sink), events, Box::new(aeri_engine::fake_open))
+            .expect("the playback thread starts");
         let state = engine.subscribe();
         (engine, state, received)
     }
@@ -132,7 +124,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[cfg_attr(miri, ignore = "decodes files, which Miri's isolation forbids")]
     async fn one_track_buffers_plays_every_frame_and_stops() {
         let (sink, observer) = held_sink();
         let (engine, mut state, _events) = engine(sink);
@@ -167,7 +158,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[cfg_attr(miri, ignore = "decodes files, which Miri's isolation forbids")]
     async fn pausing_holds_playback_and_resuming_loses_no_frames() {
         let (sink, observer) = held_sink();
         let (engine, mut state, _events) = engine(sink);
@@ -195,7 +185,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[cfg_attr(miri, ignore = "decodes files, which Miri's isolation forbids")]
     async fn seeking_flushes_once_and_plays_from_near_the_target() {
         let (sink, observer) = held_sink();
         let (engine, mut state, _events) = engine(sink);
@@ -222,7 +211,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[cfg_attr(miri, ignore = "decodes files, which Miri's isolation forbids")]
     async fn a_next_track_with_the_same_spec_follows_without_reopening_or_stopping() {
         let (sink, observer) = held_sink();
         let (engine, mut state, _events) = engine(sink);
@@ -263,7 +251,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[cfg_attr(miri, ignore = "decodes files, which Miri's isolation forbids")]
     async fn a_next_track_with_another_spec_reopens_the_output_after_draining() {
         let (sink, observer) = held_sink();
         let (engine, mut state, _events) = engine(sink);
@@ -287,7 +274,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[cfg_attr(miri, ignore = "decodes files, which Miri's isolation forbids")]
     async fn a_missing_file_is_refused_and_leaves_playback_stopped() {
         let (sink, observer) = held_sink();
         let (engine, state, _events) = engine(sink);
@@ -300,7 +286,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[cfg_attr(miri, ignore = "decodes files, which Miri's isolation forbids")]
     async fn the_state_reports_the_spec_the_output_negotiated() {
         let sink =
             FakeSink::new(NonZeroUsize::new(CAPACITY).expect("non-zero")).negotiating(spec(48_000));
@@ -320,7 +305,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[cfg_attr(miri, ignore = "decodes files, which Miri's isolation forbids")]
     async fn dropping_every_handle_stops_and_joins_the_thread() {
         let (sink, _observer) = held_sink();
         let (engine, mut state, _events) = engine(sink);
@@ -349,7 +333,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[cfg_attr(miri, ignore = "decodes files, which Miri's isolation forbids")]
     async fn clearing_the_next_slot_stops_after_the_current_track() {
         let (sink, observer) = held_sink();
         let (engine, mut state, _events) = engine(sink);
@@ -371,7 +354,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[cfg_attr(miri, ignore = "decodes files, which Miri's isolation forbids")]
     async fn stopping_discards_buffered_audio_and_plays_no_more() {
         let (sink, observer) = held_sink();
         let (engine, state, _events) = engine(sink);
@@ -391,7 +373,7 @@ mod tests {
 
     /// Every sample of a fixture, decoded without the engine.
     fn decoded(file: &str) -> Vec<f32> {
-        let mut decoder = aeri_decode::open(&track(file, "").source).expect("fixtures decode");
+        let mut decoder = aeri_engine::fake_open(&track(file, "").source).expect("fixtures decode");
         let mut samples = Vec::new();
         while let Some(block) = decoder.next_block().expect("fixtures decode cleanly") {
             samples.extend_from_slice(block);
@@ -442,7 +424,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[cfg_attr(miri, ignore = "decodes files, which Miri's isolation forbids")]
     async fn taking_the_slot_is_announced_before_the_track_is_heard_then_the_end() {
         let (sink, observer) = held_sink();
         let (engine, _state, mut events) = engine(sink);
@@ -464,7 +445,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[cfg_attr(miri, ignore = "decodes files, which Miri's isolation forbids")]
     async fn a_next_track_that_cannot_be_opened_fails_at_once_and_the_current_one_plays_on() {
         let (sink, observer) = held_sink();
         let (engine, _state, mut events) = engine(sink);
@@ -486,7 +466,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[cfg_attr(miri, ignore = "decodes files, which Miri's isolation forbids")]
     async fn a_good_track_offered_after_a_failed_one_follows_gaplessly() {
         let (sink, observer) = held_sink();
         let (engine, _state, mut events) = engine(sink);
@@ -515,7 +494,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[cfg_attr(miri, ignore = "decodes files, which Miri's isolation forbids")]
     async fn a_failed_offer_leaves_the_slot_empty_even_if_a_good_one_was_there() {
         let (sink, observer) = held_sink();
         let (engine, _state, mut events) = engine(sink);
@@ -542,7 +520,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[cfg_attr(miri, ignore = "decodes files, which Miri's isolation forbids")]
     async fn a_slot_set_after_the_take_is_for_the_track_after_the_taken_one() {
         let (sink, observer) = held_sink();
         let (engine, _state, mut events) = engine(sink);
@@ -571,7 +548,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[cfg_attr(miri, ignore = "decodes files, which Miri's isolation forbids")]
     async fn a_seek_while_a_reopen_is_pending_keeps_the_taken_track() {
         let (sink, observer) = held_sink();
         let (engine, _state, mut events) = engine(sink);
@@ -600,7 +576,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[cfg_attr(miri, ignore = "decodes files, which Miri's isolation forbids")]
     async fn play_announces_nothing_and_a_stop_is_silent() {
         let (sink, observer) = held_sink();
         let (engine, _state, mut events) = engine(sink);
@@ -617,7 +592,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[cfg_attr(miri, ignore = "decodes files, which Miri's isolation forbids")]
     async fn playback_carries_on_when_nobody_is_listening_for_events() {
         let (sink, observer) = held_sink();
         let (engine, mut state, events) = engine(sink);
@@ -634,7 +608,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[cfg_attr(miri, ignore = "decodes files, which Miri's isolation forbids")]
     async fn half_volume_halves_every_frame_the_sink_receives() {
         let (sink, observer) = held_sink();
         let (engine, mut state, _events) = engine(sink);
@@ -654,7 +627,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[cfg_attr(miri, ignore = "decodes files, which Miri's isolation forbids")]
     async fn a_volume_change_during_playback_ramps_and_then_holds() {
         let (sink, observer) = held_sink();
         let (engine, mut state, _events) = engine(sink);
@@ -683,7 +655,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[cfg_attr(miri, ignore = "decodes files, which Miri's isolation forbids")]
     async fn unity_volume_with_replaygain_off_delivers_the_decoded_samples_untouched() {
         let (sink, observer) = held_sink();
         let (engine, mut state, _events) = engine(sink);
@@ -703,9 +674,8 @@ mod tests {
     }
 
     #[tokio::test]
-    #[cfg_attr(miri, ignore = "decodes files, which Miri's isolation forbids")]
     async fn track_gain_changes_on_the_first_frame_of_the_next_track_with_one_configure() {
-        let tagged = aeri_decode::open(&track("sine-rg.flac", "").source)
+        let tagged = aeri_engine::fake_open(&track("sine-rg.flac", "").source)
             .expect("fixtures decode")
             .replay_gain()
             .factor(ReplayGainMode::Track);
@@ -740,7 +710,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[cfg_attr(miri, ignore = "decodes files, which Miri's isolation forbids")]
     async fn a_seek_resets_the_chain_so_a_pending_volume_change_does_not_ramp() {
         let (sink, observer) = held_sink();
         let (engine, mut state, _events) = engine(sink);
@@ -757,7 +726,7 @@ mod tests {
         observer.release();
         until(&mut state, "stopped", stopped).await;
 
-        let mut decoder = aeri_decode::open(&track("sine.flac", "").source).expect("decodes");
+        let mut decoder = aeri_engine::fake_open(&track("sine.flac", "").source).expect("decodes");
         decoder.seek(Duration::from_millis(500)).expect("seeks");
         let mut expected = Vec::new();
         while let Some(block) = decoder.next_block().expect("decodes cleanly") {
@@ -770,7 +739,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[cfg_attr(miri, ignore = "decodes files, which Miri's isolation forbids")]
     async fn now_playing_fires_when_the_new_track_is_heard_and_not_before() {
         let (sink, observer) = held_sink();
         let (engine, _state, mut events) = engine(sink);
@@ -793,5 +761,52 @@ mod tests {
 
         observer.allow(2_000);
         assert_eq!(label(&next_event(&mut events).await), "now second");
+    }
+
+    /// The default engine opens real files. The decoder itself is tested in `aeri-decode` and
+    /// fuzzed; these two check only that the engine reaches it (ADR 0029).
+    fn real_fixture(file: &str) -> Arc<Track> {
+        let path: PathBuf = [
+            env!("CARGO_MANIFEST_DIR"),
+            "..",
+            "aeri-decode",
+            "tests",
+            "fixtures",
+            file,
+        ]
+        .iter()
+        .collect();
+        Arc::new(Track {
+            source: Source::File(path),
+            duration: None,
+            title: Some(file.to_owned()),
+            artist: None,
+            album: None,
+        })
+    }
+
+    async fn plays_to_the_end(file: &str) {
+        let sink = FakeSink::new(NonZeroUsize::new(CAPACITY).expect("non-zero"));
+        let observer = sink.observer();
+        let (events, _received) = mpsc::unbounded_channel::<EngineEvent>();
+        let engine = Engine::spawn(Box::new(sink), events).expect("the playback thread starts");
+        let mut state = engine.subscribe();
+        engine
+            .play(real_fixture(file))
+            .await
+            .expect("the fixture plays");
+        until(&mut state, "playing", |s| transport(s).is_some()).await;
+        until(&mut state, "stopped", stopped).await;
+        assert_eq!(observer.played().len() as u64 / 2, FRAMES as u64);
+    }
+
+    #[tokio::test]
+    async fn the_default_engine_plays_a_real_flac_to_the_end() {
+        plays_to_the_end("sine.flac").await;
+    }
+
+    #[tokio::test]
+    async fn the_default_engine_plays_a_real_mp3_to_the_end() {
+        plays_to_the_end("sine.mp3").await;
     }
 }

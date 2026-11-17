@@ -13,7 +13,7 @@ use aeri_dsp::{Chain, Control, DEFAULT_CHAIN, Registry, TrackStart};
 use tokio::sync::mpsc::error::TryRecvError;
 use tokio::sync::{mpsc, oneshot, watch};
 
-use crate::{EngineError, EngineEvent};
+use crate::{EngineError, EngineEvent, Opener};
 
 /// Position is published at most this often; transitions are published at once.
 const PUBLISH_EVERY: Duration = Duration::from_millis(100);
@@ -70,6 +70,7 @@ pub(crate) struct Playback {
     commands: mpsc::Receiver<Command>,
     state: watch::Sender<PlaybackState>,
     events: Emit,
+    open: Opener,
     chain: Chain,
     /// The stream spec the sink is open for, and the spec it negotiated.
     opened: Option<(StreamSpec, StreamSpec)>,
@@ -156,6 +157,7 @@ impl Playback {
         commands: mpsc::Receiver<Command>,
         state: watch::Sender<PlaybackState>,
         events: Emit,
+        open: Opener,
     ) -> Self {
         let chain = Registry::builtin()
             .build(DEFAULT_CHAIN)
@@ -165,6 +167,7 @@ impl Playback {
             commands,
             state,
             events,
+            open,
             chain,
             opened: None,
             next: None,
@@ -248,7 +251,7 @@ impl Playback {
     /// Fills or clears the slot. A file that cannot be opened is reported at once and leaves the
     /// slot empty, so the current track plays on and the owner can offer another (ADR 0027).
     fn set_next(&mut self, track: Option<Arc<Track>>) {
-        self.next = track.and_then(|track| match aeri_decode::open(&track.source) {
+        self.next = track.and_then(|track| match (self.open)(&track.source) {
             Ok(decoder) => Some((track, decoder)),
             Err(error) => {
                 tracing::warn!(
@@ -263,7 +266,7 @@ impl Playback {
     }
 
     fn play(&mut self, track: Arc<Track>) -> Result<(), EngineError> {
-        let decoder = aeri_decode::open(&track.source)?;
+        let decoder = (self.open)(&track.source)?;
         self.next = None;
         self.start(track, decoder, false)
     }
