@@ -26,7 +26,11 @@ Hooks run in ascending priority; hooks sharing a priority run concurrently. Anyt
 
 ### Pinning and cooldown
 
-Hooks and actions are pinned to commit SHAs, because a tag can be moved and a SHA cannot. Nothing published in the last seven days is adopted, so a compromised release has time to be noticed. Renovate applies that cooldown to the updates it proposes. The `crate cooldown` CI job applies it to `Cargo.lock` itself, so a hand-run `cargo update` or `cargo add` is held to it as well. It uses Astral's reusable `cargo-cooldowns` action (Apache-2.0), which reads publication times from the crates.io index. To take a release sooner, for a security fix, add `.github/cargo-cooldowns.toml` with an exclusion naming the crate, the version, and the reason.
+Hooks and actions are pinned to commit SHAs, because a tag can be moved and a SHA cannot. Nothing published in the last seven days is adopted, so a compromised release has time to be noticed. Renovate applies that cooldown to the updates it proposes. The `crate cooldown` CI job applies it to `Cargo.lock` itself, so a hand-run `cargo update` or `cargo add` is held to it as well. It uses Astral's reusable `cargo-cooldowns` action (Apache-2.0), which reads publication times from the crates.io index.
+
+The same check runs before a push, so a lockfile that is too young fails on your machine instead of in CI. The `crate-cooldown` pre-push hook fetches Astral's script at the commit SHA the `ci.yml` job pins, so the two cannot differ and one Renovate bump moves both, and runs it with `uv` against the policy in `.github/cargo-cooldowns.toml`, which CI reads too. It needs `curl` and `uv`, and the network. The CI `checks` job skips the hook (`PREK_SKIP`), because the `crate cooldown` job already runs it.
+
+A new dependency pulls in transitive crates at their latest versions, which can be hours old, so the check is by version, not by what you asked `cargo add` for. When it fails, hold the crate back with `cargo update --precise <version> <crate>`. To take a release sooner, for a security fix, add an exclusion to `.github/cargo-cooldowns.toml` naming the crate, the version, and the reason.
 
 Lockfile changes are made with `cargo update --precise <crate>@<version>`, never a bare `cargo update`, so a pull request changes only what it says it changes.
 

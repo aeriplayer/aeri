@@ -20,7 +20,7 @@ env:
   RUST_BACKTRACE: 1
   NEXTEST_PROFILE: ci
   # Developer-machine guards; GitHub's merge commits carry no contributor signature.
-  PREK_SKIP: no-commit-to-branch,check-signed-commit
+  PREK_SKIP: no-commit-to-branch,check-signed-commit,crate-cooldown
 
 jobs:
   plan:
@@ -293,6 +293,8 @@ jobs:
           persist-credentials: false
 
       - uses: astral-sh/github-actions/cargo-cooldowns@4d0d0b9f3efeb82c92183f4423e395b81c3fcf5e
+        with:
+          policy: .github/cargo-cooldowns.toml
 
   release-plan:
     name: release plan
