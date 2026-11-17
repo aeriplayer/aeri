@@ -76,6 +76,8 @@ Specified step by step in [`design/phase-4-playback.md`](design/phase-4-playback
 
 > Point aeri at a music directory; it remembers what is there.
 
+Specified step by step in [`design/phase-5-library.md`](design/phase-5-library.md). Its decisions are proposed and await the owner.
+
 - [ ] Metadata design: the `Track` type, tag-name normalisation, SQLite schema ([ADR 0009](adr/0009-open-tag-metadata.md))
 - [ ] Create `aeri-library`: `rusqlite`, one writer thread, PRAGMAs ([ADR 0008](adr/0008-library-sqlite-and-in-memory-store.md))
 - [ ] Scan pipeline: `jwalk` walk → extension filter → `lofty` read → batched upsert
