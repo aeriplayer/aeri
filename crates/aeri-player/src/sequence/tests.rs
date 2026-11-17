@@ -1095,7 +1095,6 @@ fn apply(sequence: &mut Sequence, op: &Op) {
 
 proptest! {
     #[test]
-    #[cfg_attr(miri, ignore = "proptest reads its regression file, which Miri's isolation forbids")]
     fn the_invariants_hold_after_every_edit_and_advance(
         seed in any::<u64>(),
         ops in prop::collection::vec(op(), 0..80),
@@ -1108,7 +1107,6 @@ proptest! {
     }
 
     #[test]
-    #[cfg_attr(miri, ignore = "proptest reads its regression file, which Miri's isolation forbids")]
     fn default_order_visits_each_entry_once_in_order_and_ends(count in 1_usize..40) {
         let titles = vec!["t"; count];
         let (mut sequence, list, ids) = with(PlaybackOrder::Default, &titles);
@@ -1122,7 +1120,6 @@ proptest! {
     }
 
     #[test]
-    #[cfg_attr(miri, ignore = "proptest reads its regression file, which Miri's isolation forbids")]
     fn repeat_playlist_never_ends_on_a_non_empty_playlist(count in 1_usize..20, steps in 1_usize..100) {
         let titles = vec!["t"; count];
         let (mut sequence, _, ids) = with(PlaybackOrder::RepeatPlaylist, &titles);
@@ -1134,7 +1131,6 @@ proptest! {
     }
 
     #[test]
-    #[cfg_attr(miri, ignore = "proptest reads its regression file, which Miri's isolation forbids")]
     fn every_shuffle_pass_is_a_permutation_with_no_repeat_across_the_boundary(
         seed in any::<u64>(),
         count in 1_usize..25,
@@ -1157,7 +1153,6 @@ proptest! {
     }
 
     #[test]
-    #[cfg_attr(miri, ignore = "proptest reads its regression file, which Miri's isolation forbids")]
     fn a_shuffle_pass_visits_each_entry_once_whatever_is_added_or_removed_mid_pass(
         seed in any::<u64>(),
         count in 2_usize..12,

@@ -155,7 +155,6 @@ mod tests {
 
     proptest! {
         #[test]
-        #[cfg_attr(miri, ignore = "proptest reads its regression file, which Miri's isolation forbids")]
         fn no_text_makes_the_parser_panic_or_invent_lines(text in any::<String>()) {
             let found = parse_m3u(&text, Path::new("/music"));
 
@@ -163,7 +162,6 @@ mod tests {
         }
 
         #[test]
-        #[cfg_attr(miri, ignore = "proptest reads its regression file, which Miri's isolation forbids")]
         fn every_listed_name_comes_back_in_order_whatever_the_line_endings(
             names in prop::collection::vec("[a-zA-Z0-9_][a-zA-Z0-9_ ./-]{0,20}[a-zA-Z0-9_]", 0..12),
             crlf in any::<bool>(),
@@ -187,7 +185,6 @@ mod tests {
         }
 
         #[test]
-        #[cfg_attr(miri, ignore = "proptest reads its regression file, which Miri's isolation forbids")]
         fn lines_made_only_of_comments_and_whitespace_list_nothing(
             lines in prop::collection::vec("[ \t]*(#[^\r\n]*)?", 0..20),
         ) {

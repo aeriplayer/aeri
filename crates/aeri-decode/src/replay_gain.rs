@@ -74,14 +74,12 @@ mod tests {
 
     proptest! {
         #[test]
-        #[cfg_attr(miri, ignore = "proptest reads its regression file, which Miri's isolation forbids")]
         fn no_text_makes_the_parsers_panic_or_return_a_non_finite_value(text in any::<String>()) {
             prop_assert!(parse_gain(&text).is_none_or(f32::is_finite));
             prop_assert!(parse_peak(&text).is_none_or(|peak| peak.is_finite() && peak >= 0.0));
         }
 
         #[test]
-        #[cfg_attr(miri, ignore = "proptest reads its regression file, which Miri's isolation forbids")]
         fn a_written_gain_reads_back_with_or_without_the_suffix(gain in -100.0_f32..100.0) {
             prop_assert_eq!(parse_gain(&format!("{gain} dB")), Some(gain));
             prop_assert_eq!(parse_gain(&format!("{gain}")), Some(gain));

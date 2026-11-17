@@ -162,7 +162,6 @@ mod tests {
 
     proptest! {
         #[test]
-        #[cfg_attr(miri, ignore = "proptest reads its regression file, which Miri's isolation forbids")]
         fn duration_of_is_the_exact_quotient_rounded_down(frames: u64, hz in 1..=u32::MAX) {
             let rate = SampleRate::new(hz).expect("the strategy excludes zero");
             let exact = u128::from(frames) * 1_000_000_000 / u128::from(hz);
@@ -170,7 +169,6 @@ mod tests {
         }
 
         #[test]
-        #[cfg_attr(miri, ignore = "proptest reads its regression file, which Miri's isolation forbids")]
         fn sample_rate_round_trips_every_non_zero_rate(hz in 1..=u32::MAX) {
             prop_assert_eq!(SampleRate::new(hz).map(SampleRate::get), Some(hz));
             prop_assert_eq!(SampleRate::try_from(hz).map(SampleRate::get), Ok(hz));

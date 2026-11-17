@@ -216,7 +216,11 @@ repos:
       - id: miri
         name: miri
         language: system
-        entry: cargo +nightly miri test --workspace --all-features
+        entry: cargo +nightly miri test --workspace --exclude xtask --all-features
+        env:
+          MIRIFLAGS: -Zmiri-env-forward=PROPTEST_DISABLE_FAILURE_PERSISTENCE -Zmiri-env-forward=PROPTEST_CASES
+          PROPTEST_DISABLE_FAILURE_PERSISTENCE: "true"
+          PROPTEST_CASES: "8"
         always_run: true
         pass_filenames: false
         stages: [manual]
