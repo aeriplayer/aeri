@@ -340,7 +340,7 @@ impl Playback {
                 tracing::error!(%error, "the audio output failed; stopping");
                 self.active = None;
                 self.opened = None;
-                (self.events)(EngineEvent::Ended);
+                self.ended();
             }
         }
     }
@@ -392,6 +392,13 @@ impl Playback {
         }
     }
 
+    /// Playback stopped on its own. The state says so before the event does, so an owner
+    /// that checks the state on receiving it never sees `Active` (ADR 0025).
+    fn ended(&mut self) {
+        self.refresh();
+        (self.events)(EngineEvent::Ended);
+    }
+
     /// Waits for the output to play out what it holds, then stops or reopens it.
     fn drain(&mut self) {
         if !self.sink.is_drained() {
@@ -408,10 +415,10 @@ impl Playback {
                 if let Err(error) = self.start(track, decoder, true) {
                     tracing::error!(%error, "the output cannot be reopened for the next track; stopping");
                     (self.events)(EngineEvent::Failed(reopened));
-                    (self.events)(EngineEvent::Ended);
+                    self.ended();
                 }
             }
-            End::Stop | End::NotYet => (self.events)(EngineEvent::Ended),
+            End::Stop | End::NotYet => self.ended(),
         }
     }
 

@@ -28,6 +28,7 @@ aeri-core        = { path = "crates/aeri-core" }
 aeri-decode      = { path = "crates/aeri-decode" }
 aeri-dsp         = { path = "crates/aeri-dsp" }
 aeri-engine      = { path = "crates/aeri-engine" }
+aeri-player      = { path = "crates/aeri-player" }
 
 anyhow = { version = "1.0.104", default-features = false, features = ["std"] }
 cargo_metadata = { version = "0.23.1", default-features = false }

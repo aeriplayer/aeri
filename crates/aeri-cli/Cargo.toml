@@ -18,7 +18,7 @@ workspace = true
 
 [dependencies]
 aeri-core.workspace          = true
-aeri-engine.workspace        = true
+aeri-player.workspace        = true
 anyhow.workspace             = true
 clap.workspace               = true
 fs-err.workspace             = true

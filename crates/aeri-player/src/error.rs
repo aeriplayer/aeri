@@ -1,4 +1,4 @@
-//! What can go wrong naming a playlist or an entry.
+//! What can go wrong in the sequence and in the player.
 
 use crate::ids::{EntryId, PlaylistId};
 
@@ -12,4 +12,29 @@ pub enum SequenceError {
     /// The playlist has no entry with this id, because it was removed or never added.
     #[error("entry {0} is not in the playlist")]
     UnknownEntry(EntryId),
+}
+
+/// Why a [`Player`](crate::Player) command failed.
+#[derive(Debug, thiserror::Error)]
+#[non_exhaustive]
+pub enum PlayerError {
+    /// The player's thread could not be started.
+    #[error("failed to start the player thread")]
+    Spawn(#[source] std::io::Error),
+
+    /// The player's thread has exited, so no command can reach it.
+    #[error("the player has stopped")]
+    Stopped,
+
+    /// There is nothing to play: the active playlist is empty, or there is none.
+    #[error("there is nothing to play")]
+    NothingToPlay,
+
+    /// A playlist or an entry named by the command does not exist.
+    #[error("no such playlist or entry")]
+    Sequence(#[from] SequenceError),
+
+    /// The playback engine refused the command.
+    #[error("playback failed")]
+    Engine(#[from] aeri_engine::EngineError),
 }

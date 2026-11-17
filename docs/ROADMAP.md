@@ -58,15 +58,15 @@ Small enough to fold into the start of Phase 3. Both phases are specified step b
 
 Specified step by step in [`design/phase-4-playback.md`](design/phase-4-playback.md), with the decisions it rests on.
 
-- [ ] Create `aeri-player`: the `Player` handle ([ADR 0006](adr/0006-frontends-use-the-player-handle.md)); move `aeri-cli` onto it and close the `deny.toml` exception
-- [ ] Playlists with stable entry ids; the active playlist
-- [ ] Playback order: default, repeat track, repeat playlist, shuffle
-- [ ] The queue; stop after current
-- [ ] The engine's "took the next track" event, and the player refilling the slot
+- [x] Create `aeri-player`: the `Player` handle ([ADR 0006](adr/0006-frontends-use-the-player-handle.md)); move `aeri-cli` onto it and close the `deny.toml` exception
+- [x] Playlists with stable entry ids; the active playlist
+- [x] Playback order: default, repeat track, repeat playlist, shuffle
+- [x] The queue; stop after current
+- [x] The engine's "took the next track" event, and the player refilling the slot
 - [x] Create `aeri-dsp`: `DspNode`, the chain, a registry ([ADR 0002](adr/0002-compiled-in-extension-points.md))
 - [x] Volume and ReplayGain nodes
 - [ ] `aeri-cli`: `play <paths…>`, directories, M3U files; interactive transport keys
-- [ ] Gapless verified end to end across a playlist
+- [x] Gapless verified end to end across a playlist
 
 ---
 

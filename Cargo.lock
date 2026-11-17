@@ -25,7 +25,7 @@ name = "aeri-cli"
 version = "0.1.0"
 dependencies = [
  "aeri-core",
- "aeri-engine",
+ "aeri-player",
  "anyhow",
  "clap",
  "fs-err",
@@ -82,9 +82,12 @@ name = "aeri-player"
 version = "0.1.0"
 dependencies = [
  "aeri-core",
+ "aeri-engine",
  "fastrand",
  "proptest",
  "thiserror",
+ "tokio",
+ "tracing",
 ]
 
 [[package]]

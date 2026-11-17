@@ -1,7 +1,4 @@
-//! The `aeri` command-line player.
-//!
-//! Depends on `aeri-engine` directly until `aeri-player` exists (ADR 0006); then it moves
-//! onto the `Player` handle and the `deny.toml` exception closes.
+//! The `aeri` command-line player. It depends on `aeri-player` and `aeri-core` only (ADR 0006).
 
 mod output;
 
@@ -10,7 +7,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use aeri_core::{PlaybackState, Source, Track};
-use aeri_engine::{Engine, EngineEvent};
+use aeri_player::Player;
 use anyhow::{Context as _, Result};
 use clap::{Parser, Subcommand};
 use tracing::Level;
@@ -45,10 +42,8 @@ async fn main() -> Result<()> {
 async fn play(path: PathBuf) -> Result<()> {
     // Report a bad path before opening the audio device.
     fs_err::metadata(&path).with_context(|| format!("cannot play {}", path.display()))?;
-    // Held, not read: the player takes over the events when this command moves onto it.
-    let (events, _events) = tokio::sync::mpsc::unbounded_channel::<EngineEvent>();
-    let engine = Engine::with_default_output(events).context("cannot start playback")?;
-    let mut state = engine.subscribe();
+    let player = Player::with_default_output().context("cannot start playback")?;
+    let mut state = player.playback();
     let track = Arc::new(Track {
         source: Source::File(path.clone()),
         duration: None,
@@ -56,8 +51,16 @@ async fn play(path: PathBuf) -> Result<()> {
         artist: None,
         album: None,
     });
-    engine
-        .play(track)
+    let playlist = player
+        .create_playlist("play".to_owned())
+        .await
+        .context("cannot start playback")?;
+    player
+        .append(playlist, vec![track])
+        .await
+        .context("cannot start playback")?;
+    player
+        .play()
         .await
         .with_context(|| format!("cannot play {}", path.display()))?;
 
@@ -75,7 +78,7 @@ async fn play(path: PathBuf) -> Result<()> {
             }
             interrupted = tokio::signal::ctrl_c() => {
                 interrupted.context("cannot listen for Ctrl-C")?;
-                engine.stop().await.context("cannot stop playback")?;
+                player.stop().await.context("cannot stop playback")?;
                 break;
             }
         }

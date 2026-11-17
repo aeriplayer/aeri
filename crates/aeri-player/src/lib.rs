@@ -1,15 +1,26 @@
-//! Playlists, the queue, and playback order: what plays next.
+//! Playlists, the queue, and playback order, and the [`Player`] handle that frontends use.
 //!
-//! [`Sequence`] holds the playlists, the queue and the order, and answers what plays after
-//! what, from plain data (ADR 0024). Nothing here starts a thread or touches audio.
+//! [`Player`] is a cloneable handle to one thread that owns a [`Sequence`], which decides what
+//! plays after what (ADR 0024), and the playback engine, whose slot it keeps filled
+//! (ADR 0025). Frontends depend on this crate and on nothing beneath it (ADR 0006).
+//!
+//! The `test-util` feature adds [`Player::with_fake_sink`]. It is for dev-dependencies only.
 
+mod actor;
+mod block_on;
 mod error;
 mod ids;
+mod message;
+mod player;
 mod playlist;
 mod sequence;
 mod shuffle;
+mod state;
 
-pub use error::SequenceError;
+pub use aeri_engine::EXTENSIONS;
+pub use error::{PlayerError, SequenceError};
 pub use ids::{EntryId, PlaylistId, Position};
+pub use player::Player;
 pub use playlist::{Entry, Playlist};
 pub use sequence::{PlaybackOrder, Sequence};
+pub use state::{PlayerState, Seek};
