@@ -146,17 +146,9 @@ repos:
         priority: dependency-policy
 
       - id: crate-cooldown
-        name: crate cooldown (Astral's cargo-cooldowns)
+        name: crate cooldown (cargo xtask crate-cooldown)
         language: system
-        shell: sh
-        entry: |
-          set -eu
-          sha=$(sed -n 's|.*cargo-cooldowns@\([0-9a-f]\{40\}\).*|\1|p' .github/workflows/ci.yml | head -n 1)
-          test -n "$sha" || { echo "no pinned cargo-cooldowns action in ci.yml" >&2; exit 1; }
-          dir=$(mktemp -d)
-          trap 'rm -rf "$dir"' EXIT
-          curl -fsSL "https://raw.githubusercontent.com/astral-sh/github-actions/$sha/cargo-cooldowns/check_cargo_cooldowns.py" -o "$dir/check.py"
-          uv run --script "$dir/check.py" --policy .github/cargo-cooldowns.toml
+        entry: cargo xtask crate-cooldown
         always_run: true
         pass_filenames: false
         stages: [pre-push]
@@ -206,12 +198,7 @@ repos:
       - id: coverage
         name: coverage (cargo llvm-cov)
         language: system
-        shell: sh
-        entry: |
-          cargo llvm-cov nextest --workspace --all-features --locked --no-report &&
-          cargo llvm-cov report --ignore-filename-regex '(^|/)(xtask/|build\.rs$)' --fail-under-lines 85 &&
-          cargo llvm-cov report --package aeri-core --fail-under-lines 100 &&
-          cargo llvm-cov report --package aeri-dsp --fail-under-lines 100
+        entry: cargo xtask coverage
         always_run: true
         pass_filenames: false
         stages: [manual]
@@ -220,11 +207,7 @@ repos:
       - id: mutants
         name: mutation testing (cargo mutants)
         language: system
-        shell: sh
-        entry: |
-          mkdir -p target
-          git diff "${MUTANTS_BASE:-origin/main}"...HEAD > target/mutants.diff
-          cargo mutants --in-diff target/mutants.diff --no-shuffle
+        entry: cargo xtask mutants
         always_run: true
         pass_filenames: false
         stages: [manual]
@@ -242,10 +225,7 @@ repos:
       - id: loom
         name: loom model of the real-time bridge
         language: system
-        shell: sh
-        entry: |
-          RUSTFLAGS="--cfg loom" CARGO_TARGET_DIR=target/loom \
-            cargo test --package aeri-audio --lib --release --locked loom_model
+        entry: cargo xtask loom
         always_run: true
         pass_filenames: false
         stages: [manual]
@@ -254,15 +234,7 @@ repos:
       - id: fuzz
         name: fuzz the decoder and the playlist parser (cargo fuzz)
         language: system
-        shell: sh
-        entry: |
-          cd fuzz && mkdir -p corpus/decode corpus/m3u &&
-          cargo fuzz run --target "$(rustc -vV | sed -n 's/^host: //p')" \
-            decode corpus/decode ../crates/aeri-decode/tests/fixtures -- \
-            -max_total_time="${FUZZ_SECONDS:-60}" -timeout=10 &&
-          cargo fuzz run --target "$(rustc -vV | sed -n 's/^host: //p')" \
-            m3u corpus/m3u ../crates/aeri-player/tests/fixtures -- \
-            -max_total_time="${FUZZ_SECONDS:-60}" -timeout=10
+        entry: cargo xtask fuzz
         always_run: true
         pass_filenames: false
         stages: [manual]

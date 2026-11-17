@@ -1,0 +1,9 @@
+# Read by `cargo xtask crate-cooldown` (ADR 0028; rationale in docs/TOOLING.md).
+
+# A locked crate version published more recently than this fails the check.
+cooldown-days = 7
+
+# Versions allowed in spite of their age, for a security fix. Each names the crate, the
+# exact version, and the reason:
+#   { name = "example", version = "1.2.3", reason = "fixes RUSTSEC-0000-0000" }
+exclusions = []
