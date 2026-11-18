@@ -32,18 +32,18 @@ Every step lands with its tests, and `prek run --all-files` plus `prek run --all
 
 ## Decisions
 
-**Proposed, not yet agreed.** Each row is this brief's recommendation; the owner accepts, changes, or rejects it before the step that applies it begins. Step 1 cannot start until D1 to D4 are settled, because its ADR records them.
+Agreed with the owner on 2026-11-17. The steps below build on them. Where a step says "ADR first", the ADR records the decision before the code is written.
 
-| | Question | Proposal | Applies in |
+| | Question | Decision | Applies in |
 | --- | --- | --- | --- |
 | D1 | The shape of `Track` (ADR 0009) | **`aeri-core` keeps `Track`**, now a source, typed audio properties, and an open tag map. The engine, the player, and every frontend pass tracks, so the type stays in the crate all of them share; only reading tags from files lives in `aeri-library`. The map is a sorted boxed slice of `(FieldName, values)`, not a `HashMap`: a track carries a dozen or two fields, where a binary search over a slice beats hashing and costs a fraction of the memory. | Steps 1, 2 |
 | D2 | Field-name normalisation (ADR 0009's compatibility surface) | **foobar2000's field names, stored as ASCII upper case.** Each format's keys (ID3v2 frames, Vorbis comments) map to one name through `lofty`'s format-independent keys, plus a table of our own for what it does not cover. A key aeri has no mapping for keeps its native name, upper-cased, so `%mood%` works on a field aeri has never heard of. Non-ASCII letters in a name are left as they are. | Steps 1, 4 |
 | D3 | The SQLite schema and how it changes | **The schema in Step 1, versioned with `PRAGMA user_version`** and a list of migration functions applied in order at open. No migration crate: the list is a dozen lines and the version is one integer SQLite already stores. Paths are stored as raw bytes, because a Linux path need not be UTF-8. | Steps 1, 3 |
 | D4 | What a track's identity is | **Its path.** A file is unchanged when its size and modification time match the stored ones, and is not re-read. A file that disappears is marked missing, never deleted: playlists keep their entries, and a file that comes back (a disk remounted) is found again. Moves are a missing file plus a new one; recognising a move by content is curation work for later. | Steps 1, 5 |
 | D5 | New dependencies | `rusqlite` with `bundled` (ADR 0008), `lofty` without its default `id3v2_compression_support` unless a fixture needs it, `jwalk` and `rayon` for the walk and the reads, `notify` for watching (D6). **No** interning crate: an interner is a `HashSet<Arc<str>>` the scanner owns, a dozen lines. **No** debouncer crate: the watcher coalesces events itself (Step 7). **No** platform-directories crate (D7). Each is checked against `deny.toml`, the seven-day cooldown, and its build script when it is added. | Steps 3–7 |
-| D6 | `notify` is `CC0-1.0`, and on Linux it pulls `inotify` and `inotify-sys`, which are `ISC` | **Grant three per-crate licence exceptions, recorded in an ADR**, the way ADR 0014 did for symphonia. Neither licence is in the allowlist; both are permissive. The alternatives are worse: watching without `notify` means FSEvents and inotify FFI, which is `unsafe` outside `aeri-audio`; leaving watching out of the phase leaves the library stale until the next manual scan. This relaxes a `deny.toml` rule, so it is the owner's decision. | Step 7 |
+| D6 | `notify` is `CC0-1.0`, and on Linux it pulls `inotify` and `inotify-sys`, which are `ISC` | **Grant three per-crate licence exceptions, recorded in an ADR**, the way ADR 0014 did for symphonia. Neither licence is in the allowlist; both are permissive. The alternatives are worse: watching without `notify` means FSEvents and inotify FFI, which is `unsafe` outside `aeri-audio`; leaving watching out of the phase leaves the library stale until the next manual scan. This relaxes a `deny.toml` rule; the owner agreed to these three exceptions and no others. | Step 7 |
 | D7 | Where the database lives | **The binary decides; the library takes a path.** `aeri-cli` resolves `~/Library/Application Support/aeri/library.db` on macOS and `$XDG_DATA_HOME/aeri/library.db` (falling back to `~/.local/share`) on Linux from environment variables, a dozen lines, and `--database <path>` overrides it. Tests pass a temporary path. The database is aeri's own derived data, never the user's files (ADR 0030). | Steps 3, 10 |
-| D8 | `Player::with_default_output()` takes no arguments, and a player with a library needs a database path | **Replace it with `Player::open(PlayerConfig)`**, where the config names the database and the output. This changes an existing method of the `Player` handle, which AGENTS.md rule 8 reserves for the owner. The alternative, keeping `with_default_output` and adding a second constructor, leaves a player with no library that every frontend must know not to use. | Step 8 |
+| D8 | `Player::with_default_output()` takes no arguments, and a player with a library needs a database path | **Replace it with `Player::open(PlayerConfig)`**, where the config names the database and the output. This changes an existing method of the `Player` handle (AGENTS.md rule 8), as does Step 8's change to `append`; the owner agreed to both. The alternative, keeping `with_default_output` and adding a second constructor, leaves a player with no library that every frontend must know not to use. | Step 8 |
 | D9 | What is persisted, and when | **Playlists, the queue, the active playlist, the current entry and its position, the order, the volume, and the ReplayGain mode.** Edits are written as they happen, as jobs to the library's writer. Position is written on pause, stop, track change, seek, and shutdown, not on every tick: a crash loses at most the position within the current track. Volume, order, and ReplayGain mode are stored as player state in the same table; the settings-storage decision in `ARCHITECTURE.md` stays open for real settings. | Step 8 |
 | D10 | ReplayGain now has two readers: the decoder (ADR 0022) and `lofty` | **Playback keeps the decoder's values this phase.** The library stores the ReplayGain tags as ordinary fields, for display and queries. Moving playback onto the library's values would change the `Decoder` trait again for no gain a user can hear. The cost is two parsers that can disagree on a malformed tag; a fixture pins what each does with the Phase 4 malformed file. | Step 4 |
 | D11 | The 100,000-track budget (ADR 0008) | **The snapshot under 300 MB resident, start-up load under one second, on the owner's Mac.** A full scan is measured and recorded, not budgeted: it depends on the disk and the page cache. If either budget fails, stop: ADR 0008 says to revisit, and its fallback is a cached binary snapshot. | Step 6 |
@@ -105,7 +105,7 @@ CREATE TABLE player_state (...) STRICT;
 - **`playlist_entry.id` is the `EntryId`**, and `playlist.id` the `PlaylistId`, so ids survive a restart. The player's counters resume above the highest stored id: ids are never reused (Phase 4, Step 6).
 - **`STRICT` tables** make SQLite reject a value of the wrong type instead of storing it. Check that the bundled SQLite version supports it (3.37 or later) when `rusqlite` is added.
 
-Done when: the owner has accepted the ADR.
+Done when: the ADR records D1 to D4 as agreed, with the field mapping table checked against both sources.
 
 ## Step 2 — `aeri-core`: the new `Track`
 
@@ -330,7 +330,6 @@ Not verified: any crate's API, its publish date against the seven-day cooldown, 
 
 Stop and raise it with the owner, do not improvise, when:
 
-- a decision above has not been agreed and the step that applies it is next;
 - a signature here cannot be made to compile without changing its *meaning*;
 - you want a dependency this brief does not name, or one it names fails `cargo deny` for a reason D6 does not cover;
 - the 100,000-track measurement misses a budget (D11);
